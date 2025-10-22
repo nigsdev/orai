@@ -14,11 +14,6 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@react-native-async-storage/async-storage': path.resolve(__dirname, 'lib/async-storage-mock.js'),
-    };
-
-    // Handle handlebars issue
-    config.resolve.alias = {
-      ...config.resolve.alias,
       'handlebars': false,
     };
 

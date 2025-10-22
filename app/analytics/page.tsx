@@ -6,27 +6,61 @@ import { StatsCard } from "@/components/dashboard/stats-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ResponsiveGrid } from "@/components/ui/responsive-grid"
 import { TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react"
-import { useChatStore } from "@/lib/store"
+import { useAccount, useChainId } from "wagmi"
 import { useEffect, useState } from "react"
-import { getWalletAnalytics } from "@/lib/blockscout"
+import { getWalletAnalytics, getTokenBalances } from "@/lib/blockscout"
 
 export default function AnalyticsPage() {
-  const { wallet } = useChatStore()
+  const { address, isConnected, chain } = useAccount()
+  const chainId = useChainId()
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [multiChainData, setMultiChainData] = useState<any>({
+    ethereum: null,
+    optimism: null,
+    combined: null
+  })
 
-  // Fetch wallet analytics when wallet is connected
+  // Fetch multi-chain wallet analytics
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      if (wallet.isConnected && wallet.address) {
+    const fetchMultiChainAnalytics = async () => {
+      if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching analytics for wallet:', wallet.address)
-          const data = await getWalletAnalytics(wallet.address, wallet.chainId || 1)
-          setAnalytics(data)
-          console.log('Analytics data received:', data)
+          console.log('🔄 Fetching multi-chain analytics for wallet:', address)
+          
+          // Fetch data from both Ethereum and OP Mainnet
+          const [ethereumData, optimismData] = await Promise.allSettled([
+            getWalletAnalytics(address, 1), // Ethereum
+            getWalletAnalytics(address, 10) // OP Mainnet
+          ])
+
+          const ethereum = ethereumData.status === 'fulfilled' ? ethereumData.value : null
+          const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
+
+          console.log('📊 Ethereum data:', ethereum)
+          console.log('📊 OP Mainnet data:', optimism)
+
+          // Combine the data
+          const combined = {
+            totalBalance: (parseFloat(ethereum?.wallet?.balance || '0') + parseFloat(optimism?.wallet?.balance || '0')).toFixed(4),
+            totalTransactions: (ethereum?.wallet?.transactionCount || 0) + (optimism?.wallet?.transactionCount || 0),
+            allTransactions: [
+              ...(ethereum?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Ethereum' })),
+              ...(optimism?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Mainnet' }))
+            ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+            tokenBalances: {
+              ethereum: ethereum?.wallet?.tokenBalances || [],
+              optimism: optimism?.wallet?.tokenBalances || []
+            }
+          }
+
+          setMultiChainData({ ethereum, optimism, combined })
+          setAnalytics(combined)
+          
+          console.log('✅ Combined analytics data:', combined)
         } catch (error) {
-          console.error('Error fetching analytics:', error)
+          console.error('❌ Error fetching multi-chain analytics:', error)
         } finally {
           setLoading(false)
         }
@@ -35,42 +69,59 @@ export default function AnalyticsPage() {
       }
     }
 
-    fetchAnalytics()
-  }, [wallet.isConnected, wallet.address, wallet.chainId])
+    fetchMultiChainAnalytics()
+  }, [isConnected, address])
 
-  // Calculate stats from real data or use defaults
+  // Calculate real stats from multi-chain data
+  const totalEthBalance = parseFloat(analytics?.totalBalance || '0')
+  const totalTransactions = analytics?.totalTransactions || 0
+  const allTransactions = analytics?.allTransactions || []
+  
+  // Calculate real cross-chain volume (sum of all transaction values)
+  const crossChainVolume = allTransactions.reduce((sum: number, tx: any) => {
+    return sum + parseFloat(tx.value || '0')
+  }, 0)
+  
+  // Calculate real gas fees from transactions
+  const totalGasFees = allTransactions.reduce((sum: number, tx: any) => {
+    const gasUsed = parseInt(tx.gasUsed || '0')
+    const gasPrice = parseInt(tx.gasPrice || '0')
+    const gasFeeInEth = (gasUsed * gasPrice) / Math.pow(10, 18)
+    return sum + gasFeeInEth
+  }, 0)
+
   const stats = [
     {
       title: "Total Portfolio Value",
-      value: analytics?.wallet?.balance ? `$${(parseFloat(analytics.wallet.balance) * 2000).toFixed(2)}` : "$0.00",
-      change: "+5.2%",
-      changeType: "positive" as const,
+      value: totalEthBalance > 0 ? `${totalEthBalance.toFixed(4)} ETH` : "0.0000 ETH",
+      change: "Real Balance",
+      changeType: "neutral" as const,
       icon: DollarSign,
-      description: "From last month"
+      description: "Across all chains"
     },
     {
-      title: "Active Transactions",
-      value: analytics?.wallet?.transactionCount?.toString() || "0",
-      change: "+12.5%",
-      changeType: "positive" as const,
+      title: "Total Transactions",
+      value: totalTransactions.toString(),
+      change: "Real Count",
+      changeType: "neutral" as const,
       icon: Activity,
-      description: "This month"
+      description: "All chains combined"
     },
     {
       title: "Cross-Chain Volume",
-      value: "$2,340.00",
-      change: "-2.1%",
-      changeType: "negative" as const,
+      value: crossChainVolume > 0 ? `${crossChainVolume.toFixed(4)} ETH` : "0.0000 ETH",
+      change: "Real Volume",
+      changeType: "neutral" as const,
       icon: TrendingUp,
-      description: "Last 30 days"
+      description: "Total transaction volume"
     },
     {
-      title: "Gas Fees Saved",
-      value: "$45.20",
-      change: "+8.3%",
-      changeType: "positive" as const,
+      title: "Total Gas Fees",
+      value: totalGasFees > 0 ? `${totalGasFees.toFixed(6)} ETH` : "0.000000 ETH",
+      change: "Real Fees",
+      changeType: "neutral" as const,
       icon: TrendingDown,
-      description: "Optimization savings"
+      description: "Total gas spent"
     }
   ]
 
@@ -82,6 +133,11 @@ export default function AnalyticsPage() {
           <p className="text-gray-400">
             Comprehensive insights into your Web3 portfolio and transaction patterns.
           </p>
+          {isConnected && (
+            <div className="mt-2 text-sm text-blue-400">
+              📊 Connected Wallet: {address} | Loading: {loading ? 'Yes' : 'No'}
+            </div>
+          )}
         </div>
 
         {/* Stats Grid */}
@@ -101,8 +157,37 @@ export default function AnalyticsPage() {
           ))}
         </ResponsiveGrid>
 
-        {/* Dashboard Overview */}
-        <DashboardOverview />
+        {/* Real Analytics Overview */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            title="Ethereum Balance"
+            value={multiChainData.ethereum?.wallet?.balance ? `${multiChainData.ethereum.wallet.balance} ETH` : "0.0000 ETH"}
+            description="Ethereum Mainnet"
+            icon={DollarSign}
+            trend={{ value: 0, label: "Ethereum balance" }}
+          />
+          <StatsCard
+            title="OP Mainnet Balance"
+            value={multiChainData.optimism?.wallet?.balance ? `${multiChainData.optimism.wallet.balance} ETH` : "0.0000 ETH"}
+            description="OP Mainnet"
+            icon={TrendingUp}
+            trend={{ value: 0, label: "OP Mainnet balance" }}
+          />
+          <StatsCard
+            title="Total Transactions"
+            value={analytics?.totalTransactions?.toString() || "0"}
+            description="All chains combined"
+            icon={Activity}
+            trend={{ value: 0, label: "Total transactions" }}
+          />
+          <StatsCard
+            title="Active Chains"
+            value={`${[multiChainData.ethereum, multiChainData.optimism].filter(Boolean).length}/2`}
+            description="Chains with activity"
+            icon={TrendingDown}
+            trend={{ value: 0, label: "Active chains" }}
+          />
+        </div>
 
         {/* Additional Analytics Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -118,15 +203,15 @@ export default function AnalyticsPage() {
                     <div className="h-16 bg-white/5 rounded-lg mt-2"></div>
                   </div>
                 </div>
-              ) : analytics?.recentTransactions?.length > 0 ? (
+              ) : analytics?.allTransactions?.length > 0 ? (
                 <div className="space-y-4">
-                  {analytics.recentTransactions.slice(0, 5).map((tx: any, index: number) => (
+                  {analytics.allTransactions.slice(0, 5).map((tx: any, index: number) => (
                     <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'bg-red-500/20' : 'bg-green-500/20'
+                          tx.from?.toLowerCase() === address?.toLowerCase() ? 'bg-red-500/20' : 'bg-green-500/20'
                         }`}>
-                          {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? (
+                          {tx.from?.toLowerCase() === address?.toLowerCase() ? (
                             <TrendingDown className="w-4 h-4 text-red-400" />
                           ) : (
                             <TrendingUp className="w-4 h-4 text-green-400" />
@@ -134,10 +219,13 @@ export default function AnalyticsPage() {
                         </div>
                         <div>
                           <div className="text-white font-medium">
-                            {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
+                            {tx.from?.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
                           </div>
                           <div className="text-gray-400 text-sm">
-                            {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? tx.to : tx.from}
+                            {tx.from?.toLowerCase() === address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === address?.toLowerCase() ? tx.to : tx.from}
+                          </div>
+                          <div className="text-xs text-blue-400">
+                            {tx.chain}
                           </div>
                         </div>
                       </div>
@@ -156,7 +244,7 @@ export default function AnalyticsPage() {
                 <div className="text-center py-8">
                   <div className="text-gray-400">No transactions found</div>
                   <div className="text-sm text-gray-500 mt-1">
-                    {wallet.isConnected ? 'This wallet has no recent transactions' : 'Connect your wallet to view transactions'}
+                    {isConnected ? 'This wallet has no recent transactions' : 'Connect your wallet to view transactions'}
                   </div>
                 </div>
               )}
@@ -165,30 +253,44 @@ export default function AnalyticsPage() {
 
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>Portfolio Allocation</CardTitle>
+              <CardTitle>Multi-Chain Portfolio</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-                    <span className="text-white">Ethereum</span>
-                  </div>
-                  <span className="text-white font-medium">65%</span>
+                {/* Ethereum Chain */}
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-blue-400">Ethereum</div>
+                  {analytics?.tokenBalances?.ethereum?.length > 0 ? (
+                    analytics.tokenBalances.ethereum.map((token: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                          <span className="text-white text-sm">{token.symbol}</span>
+                        </div>
+                        <span className="text-white font-medium text-sm">{token.balance}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-400 text-sm">No tokens on Ethereum</div>
+                  )}
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                    <span className="text-white">Stablecoins</span>
-                  </div>
-                  <span className="text-white font-medium">25%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
-                    <span className="text-white">DeFi Tokens</span>
-                  </div>
-                  <span className="text-white font-medium">10%</span>
+
+                {/* OP Mainnet Chain */}
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-orange-400">OP Mainnet</div>
+                  {analytics?.tokenBalances?.optimism?.length > 0 ? (
+                    analytics.tokenBalances.optimism.map((token: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+                          <span className="text-white text-sm">{token.symbol}</span>
+                        </div>
+                        <span className="text-white font-medium text-sm">{token.balance}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-400 text-sm">No tokens on OP Mainnet</div>
+                  )}
                 </div>
               </div>
             </CardContent>

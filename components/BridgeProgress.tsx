@@ -41,17 +41,17 @@ export function BridgeProgress({
 
   // Update steps when payment state changes
   useEffect(() => {
-    if (paymentState.currentStep) {
+    if (paymentState.currentStep && paymentState.currentStep.typeID) {
       setSteps(prev => {
         const existingIndex = prev.findIndex(s => s.typeID === paymentState.currentStep?.typeID)
         if (existingIndex >= 0) {
           // Update existing step
           const updated = [...prev]
-          updated[existingIndex] = { ...paymentState.currentStep, status: 'completed' }
+          updated[existingIndex] = { ...paymentState.currentStep, status: 'completed' } as ProgressStep
           return updated
         } else {
           // Add new step
-          return [...prev, { ...paymentState.currentStep, status: 'completed' }]
+          return [...prev, { ...paymentState.currentStep, status: 'completed' } as ProgressStep]
         }
       })
       setCurrentStepIndex(steps.length)

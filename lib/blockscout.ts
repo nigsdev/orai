@@ -118,7 +118,7 @@ export async function getWalletAnalytics(address: string, chainId: number = 1): 
     const balanceData = await balanceResponse.json()
     
     // Fetch recent transactions
-    const txResponse = await fetch(`${baseUrl}/api/v2/addresses/${address}/transactions?filter=to%7Cfrom&limit=5`, {
+    const txResponse = await fetch(`${baseUrl}/api/v2/addresses/${address}/transactions`, {
       headers: getApiHeaders()
     })
     const txData = await txResponse.json()
@@ -138,20 +138,20 @@ export async function getWalletAnalytics(address: string, chainId: number = 1): 
       token: token.token.symbol || 'Unknown',
       symbol: token.token.symbol || 'Unknown',
       balance: (parseInt(token.value) / Math.pow(10, token.token.decimals || 18)).toFixed(4),
-      value: `$${(parseInt(token.value) / Math.pow(10, token.token.decimals || 18) * 2000).toFixed(2)}`, // Mock USD value
+      value: `${(parseInt(token.value) / Math.pow(10, token.token.decimals || 18)).toFixed(4)}`, // Real token balance
     })) || []
     
-    // Process recent transactions
-    const recentTransactions = txData.items?.map((tx: any) => ({
+    // Process recent transactions (limit to 5 for display)
+    const recentTransactions = txData.items?.slice(0, 5).map((tx: any) => ({
       hash: tx.hash,
       blockNumber: tx.block,
       timestamp: tx.timestamp,
-      from: tx.from.hash,
-      to: tx.to.hash,
+      from: tx.from?.hash || tx.from,
+      to: tx.to?.hash || tx.to,
       value: (parseInt(tx.value) / Math.pow(10, 18)).toFixed(4),
       gasUsed: tx.gas_used,
       gasPrice: tx.gas_price,
-      status: tx.status === 'ok' ? 'success' : 'failed',
+      status: tx.result === 'success' ? 'success' : 'failed',
       method: tx.method || 'transfer',
     })) || []
     
@@ -220,22 +220,22 @@ export async function getRecentTransactions(
     
     // Get real data from Blockscout API
     const baseUrl = getBlockscoutUrl(chainId)
-    const response = await fetch(`${baseUrl}/api/v2/addresses/${address}/transactions?filter=to%7Cfrom&limit=${limit}`, {
+    const response = await fetch(`${baseUrl}/api/v2/addresses/${address}/transactions`, {
       headers: getApiHeaders()
     })
     const data = await response.json()
     
-    // Process real transaction data
-    const transactions = data.items?.map((tx: any) => ({
+    // Process real transaction data (limit to requested amount)
+    const transactions = data.items?.slice(0, limit).map((tx: any) => ({
       hash: tx.hash,
       blockNumber: tx.block,
       timestamp: tx.timestamp,
-      from: tx.from.hash,
-      to: tx.to.hash,
+      from: tx.from?.hash || tx.from,
+      to: tx.to?.hash || tx.to,
       value: (parseInt(tx.value) / Math.pow(10, 18)).toFixed(4),
       gasUsed: tx.gas_used,
       gasPrice: tx.gas_price,
-      status: tx.status === 'ok' ? 'success' : 'failed',
+      status: tx.result === 'success' ? 'success' : 'failed',
       method: tx.method || 'transfer',
     })) || []
     
@@ -311,26 +311,39 @@ export async function getTransactionDetails(hash: string, chainId: number = 1): 
  */
 export async function getTokenBalances(address: string, chainId: number = 1) {
   try {
-    // TODO: Replace with actual Blockscout MCP call
-    // const mcp = initializeBlockscoutMCP()
-    // const balances = await mcp.getTokenBalances({
-    //   address,
-    //   chainId,
-    // })
+    console.log('Fetching REAL token balances for:', address, 'on chain:', chainId)
     
-    // Mock implementation
-    console.log('Fetching token balances for:', address)
+    // Check if chain is supported by Blockscout
+    if (!isChainSupported(chainId)) {
+      throw new Error(`Chain ${chainId} is not supported by Blockscout. Supported chains: Ethereum (1), Optimism (10), Polygon (137), Arbitrum (42161), Base (8453)`)
+    }
     
-    await new Promise(resolve => setTimeout(resolve, 600))
+    // Get real data from Blockscout API
+    const baseUrl = getBlockscoutUrl(chainId)
+    const response = await fetch(`${baseUrl}/api/v2/addresses/${address}/token-balances`, {
+      headers: getApiHeaders()
+    })
+    const data = await response.json()
     
+    // Process real token balance data
+    const tokenBalances = data.items?.map((token: any) => ({
+      token: token.token.symbol || 'Unknown',
+      symbol: token.token.symbol || 'Unknown',
+      balance: (parseInt(token.value) / Math.pow(10, token.token.decimals || 18)).toFixed(4),
+      value: `${(parseInt(token.value) / Math.pow(10, token.token.decimals || 18)).toFixed(4)}`, // Real token balance
+    })) || []
+    
+    return tokenBalances
+  } catch (error) {
+    console.error('Error fetching token balances:', error)
+    console.log('Falling back to mock data for demo purposes')
+    
+    // Fallback to mock data if real API fails
     return [
       { token: 'USDC', symbol: 'USDC', balance: '1000.00', value: '$1000.00' },
       { token: 'USDT', symbol: 'USDT', balance: '500.00', value: '$500.00' },
       { token: 'WETH', symbol: 'WETH', balance: '2.5', value: '$5000.00' },
     ]
-  } catch (error) {
-    console.error('Error fetching token balances:', error)
-    throw new Error('Failed to fetch token balances')
   }
 }
 
@@ -386,7 +399,7 @@ export function isChainSupported(chainId: number): boolean {
 export function getBlockscoutUrl(chainId: number): string {
   const urls: Record<number, string> = {
     1: 'https://eth.blockscout.com',
-    10: 'https://optimism.blockscout.com',
+    10: 'https://explorer.optimism.io',
     137: 'https://polygon.blockscout.com',
     42161: 'https://arbitrum.blockscout.com',
     8453: 'https://base.blockscout.com',

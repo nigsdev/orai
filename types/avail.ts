@@ -9,6 +9,15 @@ export interface AvailSDKConfig {
   rpcUrl?: string
 }
 
+export interface CrossChainIntent {
+  chainFrom: number
+  chainTo: number
+  token: string
+  amount: string
+  walletAddress: string
+  recipientAddress?: string
+}
+
 export interface BridgeOperation {
   token: 'USDC' | 'USDT' | 'ETH' | 'WETH' | 'MATIC' | 'WMATIC'
   amount: string

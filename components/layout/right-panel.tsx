@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useChatStore } from "@/lib/store"
 import { useEffect, useState } from "react"
 import { getWalletAnalytics } from "@/lib/blockscout"
+import { useAccount, useChainId } from "wagmi"
 
 // Helper function to generate volume data from transactions
 function generateVolumeData(transactions: any[]) {
@@ -22,18 +23,19 @@ function generateVolumeData(transactions: any[]) {
 }
 
 export function RightPanel() {
-  const { wallet } = useChatStore()
+  const { address, isConnected, chain } = useAccount()
+  const chainId = useChainId()
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   // Fetch wallet analytics when wallet is connected
   useEffect(() => {
     const fetchAnalytics = async () => {
-      if (wallet.isConnected && wallet.address) {
+      if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching right panel analytics for wallet:', wallet.address)
-          const data = await getWalletAnalytics(wallet.address, wallet.chainId || 1)
+          console.log('Fetching right panel analytics for wallet:', address)
+          const data = await getWalletAnalytics(address, chainId || 1)
           setAnalytics(data)
           console.log('Right panel analytics data received:', data)
         } catch (error) {
@@ -47,7 +49,7 @@ export function RightPanel() {
     }
 
     fetchAnalytics()
-  }, [wallet.isConnected, wallet.address, wallet.chainId])
+  }, [isConnected, address, chainId])
 
   // Generate transaction volume data from real transactions or use mock data
   const transactionData = analytics?.recentTransactions?.length > 0 ? 
@@ -63,9 +65,9 @@ export function RightPanel() {
 
   const maxVolume = Math.max(...transactionData.map(d => d.volume))
 
-  // Calculate total volume from real data
+  // Calculate total volume from real data (in ETH, not USD)
   const totalVolume = analytics?.recentTransactions?.length > 0 ? 
-    analytics.recentTransactions.reduce((sum: number, tx: any) => sum + (parseFloat(tx.value) * 2000), 0) : 0
+    analytics.recentTransactions.reduce((sum: number, tx: any) => sum + parseFloat(tx.value || '0'), 0) : 0
   const avgDaily = totalVolume / 7
 
   return (
@@ -121,13 +123,13 @@ export function RightPanel() {
           <div className="flex justify-between items-center">
             <span className="text-gray-400 text-sm">Total Volume</span>
             <span className="text-white font-semibold">
-              {loading ? '...' : `$${totalVolume.toLocaleString()}`}
+              {loading ? '...' : `${totalVolume.toFixed(4)} ETH`}
             </span>
           </div>
           <div className="flex justify-between items-center mt-1">
             <span className="text-gray-400 text-sm">Avg Daily</span>
             <span className="text-accent-blue-500 font-semibold">
-              {loading ? '...' : `$${avgDaily.toLocaleString()}`}
+              {loading ? '...' : `${avgDaily.toFixed(4)} ETH`}
             </span>
           </div>
         </div>
@@ -159,11 +161,11 @@ export function RightPanel() {
             <div className="text-right">
               <div className="text-white font-semibold">
                 {loading ? '...' : analytics?.wallet?.balance ? 
-                  `$${(parseFloat(analytics.wallet.balance) * 2000).toFixed(2)}` : 
-                  '$0.00'
+                  `${parseFloat(analytics.wallet.balance).toFixed(4)} ETH` : 
+                  '0.0000 ETH'
                 }
               </div>
-              <div className="text-green-400 text-xs">+12.5%</div>
+              <div className="text-gray-400 text-xs">Real Balance</div>
             </div>
           </div>
 
@@ -179,8 +181,13 @@ export function RightPanel() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-white font-semibold">0.0024 ETH</div>
-              <div className="text-gray-400 text-xs">$4.80</div>
+              <div className="text-white font-semibold">
+                {loading ? '...' : analytics?.recentTransactions?.length > 0 ? 
+                  `${(totalVolume / analytics.recentTransactions.length).toFixed(6)} ETH` : 
+                  '0.000000 ETH'
+                }
+              </div>
+              <div className="text-gray-400 text-xs">Avg per tx</div>
             </div>
           </div>
 
@@ -198,12 +205,12 @@ export function RightPanel() {
             <div className="text-right">
               <div className="text-white font-semibold">
                 {loading ? '...' : analytics?.recentTransactions?.length > 0 ? 
-                  `$${(analytics.recentTransactions.length * 15.07).toFixed(2)}` : 
-                  '$0.00'
+                  `${analytics.recentTransactions.length} txns` : 
+                  '0 txns'
                 }
               </div>
               <div className="text-gray-400 text-xs">
-                {loading ? '...' : analytics?.recentTransactions?.length || 0} transactions
+                Real count
               </div>
             </div>
           </div>

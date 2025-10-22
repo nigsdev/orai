@@ -20,17 +20,9 @@ import {
   BridgeResult, 
   ProgressStep,
   AvailEvent,
-  AvailEventType 
+  AvailEventType,
+  CrossChainIntent
 } from '@/types/avail'
-
-export interface CrossChainIntent {
-  chainFrom: number
-  chainTo: number
-  token: string
-  amount: string
-  walletAddress: string
-  recipientAddress?: string
-}
 
 // Global SDK instance
 let sdkInstance: NexusSDK | null = null

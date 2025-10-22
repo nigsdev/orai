@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { ResponsiveGrid } from "@/components/ui/responsive-grid"
 import { Send, ArrowUpRight, ArrowDownLeft, CreditCard, Wallet, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useAccount, useBalance, useChainId } from "wagmi"
 import { useChatStore } from "@/lib/store"
 import { getWalletAnalytics, getTokenBalances } from "@/lib/blockscout"
 import { getUnifiedBalances } from "@/lib/avail"
@@ -22,26 +23,85 @@ export default function PaymentsPage() {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
   const [tokens, setTokens] = useState<any[]>([])
 
-  const { wallet } = useChatStore()
+  const { address, isConnected, chain } = useAccount()
+  const chainId = useChainId()
+  const { data: balance } = useBalance({ address })
   const { executeBridge, isReady } = useAvailNexus()
+
+  // Get the actual chain ID (fallback to chain.id if useChainId() doesn't work)
+  const [manualChainId, setManualChainId] = useState<number | null>(null)
+  
+  // Get chain ID directly from wallet as fallback
+  useEffect(() => {
+    const getChainIdFromWallet = async () => {
+      if (typeof window !== 'undefined' && window.ethereum && isConnected) {
+        try {
+          const chainId = await window.ethereum.request({ method: 'eth_chainId' })
+          const numericChainId = parseInt(chainId, 16)
+          console.log('🔗 Direct wallet chain ID:', numericChainId)
+          setManualChainId(numericChainId)
+        } catch (error) {
+          console.error('Error getting chain ID from wallet:', error)
+        }
+      }
+    }
+    
+    getChainIdFromWallet()
+    
+    // Also poll for chain changes every 2 seconds as a fallback
+    const interval = setInterval(getChainIdFromWallet, 2000)
+    
+    return () => clearInterval(interval)
+  }, [isConnected])
+
+  // Prioritize manual chain ID detection over Wagmi hooks
+  const actualChainId = manualChainId || chainId || chain?.id || 1
+
+  // Debug chain information
+  console.log('🔍 Chain Debug Info:', {
+    wagmiChainId: chainId,
+    wagmiChain: chain,
+    manualChainId,
+    actualChainId,
+    isConnected,
+    address,
+    chainName: chain?.name
+  })
+
+  // Listen for chain changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      const handleChainChanged = (chainId: string) => {
+        const numericChainId = parseInt(chainId, 16)
+        console.log('🔄 Chain changed to:', numericChainId)
+        setManualChainId(numericChainId)
+      }
+
+      window.ethereum.on('chainChanged', handleChainChanged)
+      
+      return () => {
+        window.ethereum?.removeListener('chainChanged', handleChainChanged)
+      }
+    }
+  }, [])
 
   // Fetch real wallet data
   useEffect(() => {
     const fetchWalletData = async () => {
-      if (wallet.isConnected && wallet.address) {
+      if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching real wallet data for payments page:', wallet.address)
+          console.log('Fetching real wallet data for payments page:', address, 'on chain:', actualChainId)
           
           // Fetch analytics and transactions
-          const analyticsData = await getWalletAnalytics(wallet.address, wallet.chainId || 1)
+          const analyticsData = await getWalletAnalytics(address, actualChainId)
           setAnalytics(analyticsData)
           
           // Set real transactions
           setRecentTransactions(analyticsData.recentTransactions || [])
           
           // Fetch token balances
-          const tokenBalances = await getTokenBalances(wallet.address, wallet.chainId || 1)
+          const tokenBalances = await getTokenBalances(address, actualChainId)
           setTokens(tokenBalances || [])
           
           // Try to get unified balances from Avail
@@ -66,7 +126,7 @@ export default function PaymentsPage() {
     }
 
     fetchWalletData()
-  }, [wallet.isConnected, wallet.address, wallet.chainId])
+  }, [isConnected, address, actualChainId, manualChainId])
 
   // Handle payment sending
   const handleSendPayment = async () => {
@@ -99,6 +159,25 @@ export default function PaymentsPage() {
           <p className="text-gray-400">
             Send and receive crypto payments across multiple chains with ease.
           </p>
+          <div className="mt-2 flex items-center gap-4">
+            <div className="text-sm text-blue-400">
+              🔗 Current Chain: {actualChainId === 10 ? 'OP Mainnet' : actualChainId === 1 ? 'Ethereum' : `Chain ${actualChainId}`} (ID: {actualChainId})
+            </div>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => {
+                console.log('🔄 Manual refresh triggered')
+                window.location.reload()
+              }}
+              className="text-xs"
+            >
+              🔄 Refresh Chain
+            </Button>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            Debug: Wagmi={chainId} | Manual={manualChainId} | Chain={chain?.name} | Final={actualChainId}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -207,9 +286,9 @@ export default function PaymentsPage() {
                   <div key={tx.hash || index} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'bg-red-500/20' : 'bg-green-500/20'
+                        tx.from?.toLowerCase() === address?.toLowerCase() ? 'bg-red-500/20' : 'bg-green-500/20'
                       }`}>
-                        {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? (
+                        {tx.from?.toLowerCase() === address?.toLowerCase() ? (
                           <ArrowUpRight className="w-4 h-4 text-red-400" />
                         ) : (
                           <ArrowDownLeft className="w-4 h-4 text-green-400" />
@@ -217,10 +296,10 @@ export default function PaymentsPage() {
                       </div>
                       <div>
                         <div className="text-white font-medium">
-                          {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
+                          {tx.from?.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
                         </div>
                         <div className="text-gray-400 text-sm">
-                          {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? tx.to : tx.from}
+                          {tx.from?.toLowerCase() === address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === address?.toLowerCase() ? tx.to : tx.from}
                         </div>
                       </div>
                     </div>
@@ -237,7 +316,7 @@ export default function PaymentsPage() {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-400">
-                {wallet.isConnected ? 'No transactions found' : 'Connect your wallet to view transactions'}
+                {isConnected ? 'No transactions found' : 'Connect your wallet to view transactions'}
               </div>
             )}
           </CardContent>
@@ -278,7 +357,7 @@ export default function PaymentsPage() {
               </ResponsiveGrid>
             ) : (
               <div className="text-center py-8 text-gray-400">
-                {wallet.isConnected ? 'No token balances found' : 'Connect your wallet to view token balances'}
+                {isConnected ? 'No token balances found' : 'Connect your wallet to view token balances'}
               </div>
             )}
           </CardContent>
