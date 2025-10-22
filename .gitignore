@@ -240,3 +240,6 @@ build/
 # Custom project files
 myenv/
 client-development/
+
+# Hedera AgentKit
+hedera-agent-kit-js/

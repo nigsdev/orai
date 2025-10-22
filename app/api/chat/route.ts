@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseQueryWithAI } from '@/lib/aiParser'
-import { parseUserIntent } from '@/lib/hederaAgent'
+import { parseUserIntent, executeHederaOperation, getHederaBalance } from '@/lib/hederaAgent'
 import { getWalletAnalytics } from '@/lib/blockscout'
 import { executeCrossChainIntent } from '@/lib/avail'
 
@@ -103,6 +103,28 @@ export async function POST(request: NextRequest) {
           }
         } else {
           response = 'Please connect your wallet to view analytics.'
+        }
+        break
+
+      case 'hedera_operation':
+        try {
+          const hederaResponse = await executeHederaOperation(message, {
+            walletAddress,
+            chainId
+          })
+          
+          response = hederaResponse.response
+          transactionHash = hederaResponse.executionResult?.transactionId
+          status = hederaResponse.executionResult?.success ? 'success' : 'failed'
+          
+          metadata = {
+            type: 'hedera_operation',
+            operation: agentResponse.intent.hederaOperation?.type,
+            details: hederaResponse.executionResult
+          }
+        } catch (error) {
+          response = `❌ Failed to execute Hedera operation: ${error instanceof Error ? error.message : 'Unknown error'}`
+          status = 'failed'
         }
         break
 

@@ -36,7 +36,7 @@ export default function ChatPage() {
 
         {/* Features */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardContent className="p-4">
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -55,7 +55,7 @@ export default function ChatPage() {
             </CardContent>
           </Card>
 
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardContent className="p-4">
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -74,7 +74,7 @@ export default function ChatPage() {
             </CardContent>
           </Card>
 
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardContent className="p-4">
               <motion.div
                 initial={{ opacity: 0, x: 20 }}

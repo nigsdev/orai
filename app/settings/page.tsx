@@ -35,7 +35,7 @@ export default function SettingsPage() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-white">Settings</CardTitle>
+          <h2 className="text-3xl font-bold tracking-tight text-white">Settings</h2>
           <p className="text-gray-400">
             Manage your account preferences and application settings.
           </p>
@@ -43,7 +43,7 @@ export default function SettingsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Profile Settings */}
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -89,7 +89,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* Wallet Settings */}
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wallet className="h-5 w-5" />
@@ -134,7 +134,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Notifications */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
@@ -187,7 +187,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Privacy & Security */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -244,7 +244,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Appearance */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
@@ -280,7 +280,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Advanced Settings */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />

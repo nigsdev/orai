@@ -23,9 +23,10 @@ export function Header() {
 
   const networks = [
     { name: "Ethereum", symbol: "ETH" },
+    { name: "Optimism", symbol: "OP" },
     { name: "Polygon", symbol: "MATIC" },
     { name: "Arbitrum", symbol: "ARB" },
-    { name: "Optimism", symbol: "OP" },
+    { name: "Base", symbol: "BASE" },
   ]
 
   // Check if we're on the client side and MetaMask availability
@@ -76,12 +77,12 @@ export function Header() {
         })
       }
 
-      window.ethereum.on('accountsChanged', handleAccountsChanged)
-      window.ethereum.on('chainChanged', handleChainChanged)
+      window.ethereum?.on('accountsChanged', handleAccountsChanged)
+      window.ethereum?.on('chainChanged', handleChainChanged)
 
       return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
-        window.ethereum.removeListener('chainChanged', handleChainChanged)
+        window.ethereum?.removeListener('accountsChanged', handleAccountsChanged)
+        window.ethereum?.removeListener('chainChanged', handleChainChanged)
       }
     }
   }, [isMetaMaskAvailable, setWallet])
@@ -101,36 +102,36 @@ export function Header() {
       console.log('Attempting to connect to MetaMask...')
 
       // Request account access
-      const accounts = await window.ethereum.request({
+      const accounts = await window.ethereum?.request({
         method: 'eth_requestAccounts',
       })
 
       console.log('Accounts received:', accounts)
 
-      if (accounts.length > 0) {
+      if (accounts && accounts.length > 0) {
         const address = accounts[0]
         
         // Get chain ID
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' })
+        const chainId = await window.ethereum?.request({ method: 'eth_chainId' })
         
         console.log('Chain ID:', chainId)
         
         setWallet({
           address,
           isConnected: true,
-          chainId: parseInt(chainId, 16),
+          chainId: chainId ? parseInt(chainId, 16) : null,
         })
 
         toast({
           title: 'Wallet Connected',
-          description: `Successfully connected to MetaMask on Chain ID: ${parseInt(chainId, 16)}`,
+          description: `Successfully connected to MetaMask on Chain ID: ${chainId ? parseInt(chainId, 16) : 'Unknown'}`,
         })
       }
     } catch (error) {
       console.error('MetaMask connection error:', error)
       toast({
         title: 'Connection Failed',
-        description: `Failed to connect to MetaMask: ${error.message || 'Please try again.'}`,
+        description: `Failed to connect to MetaMask: ${error instanceof Error ? error.message : 'Please try again.'}`,
         variant: 'destructive',
       })
     }
@@ -165,6 +166,7 @@ export function Header() {
     
     const explorers: Record<number, string> = {
       1: 'https://etherscan.io/address/',
+      10: 'https://optimistic.etherscan.io/address/',
       137: 'https://polygonscan.com/address/',
       42161: 'https://arbiscan.io/address/',
       8453: 'https://basescan.io/address/',
@@ -176,6 +178,7 @@ export function Header() {
   const getChainName = (chainId: number): string => {
     const chains: Record<number, string> = {
       1: 'Ethereum',
+      10: 'Optimism',
       137: 'Polygon',
       42161: 'Arbitrum',
       8453: 'Base',
@@ -302,7 +305,10 @@ export function Header() {
                   
                   {getExplorerUrl() && (
                     <button
-                      onClick={() => window.open(getExplorerUrl(), '_blank')}
+                      onClick={() => {
+                        const url = getExplorerUrl()
+                        if (url) window.open(url, '_blank')
+                      }}
                       className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
                     >
                       <ExternalLink className="w-4 h-4 text-gray-400" />

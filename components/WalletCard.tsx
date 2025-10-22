@@ -137,7 +137,10 @@ export function WalletCard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(getExplorerUrl(), '_blank')}
+                onClick={() => {
+                  const url = getExplorerUrl()
+                  if (url) window.open(url, '_blank')
+                }}
                 className="h-8 w-8 p-0"
               >
                 <ExternalLink className="h-3 w-3" />

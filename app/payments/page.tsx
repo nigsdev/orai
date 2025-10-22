@@ -38,7 +38,7 @@ export default function PaymentsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Send Payment Form */}
-          <Card variant="glass" className="lg:col-span-2">
+          <Card className="glass-card lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
@@ -96,7 +96,7 @@ export default function PaymentsPage() {
           </Card>
 
           {/* Quick Actions */}
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
@@ -118,7 +118,7 @@ export default function PaymentsPage() {
         </div>
 
         {/* Recent Transactions */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
@@ -156,14 +156,14 @@ export default function PaymentsPage() {
         </Card>
 
         {/* Token Balances */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle>Your Tokens</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveGrid cols={{ default: 1, sm: 2, lg: 3 }}>
               {tokens.map((token) => (
-                <Card key={token.symbol} variant="glass" hover className="p-4">
+                <Card key={token.symbol} className="glass-card p-4 hover:bg-white/10 transition-colors duration-300">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">

@@ -146,7 +146,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-                          onClick={() => window.open(getExplorerUrl(), '_blank')}
+                          onClick={() => {
+                            const url = getExplorerUrl()
+                            if (url) window.open(url, '_blank')
+                          }}
                         >
                           <ExternalLink className="h-3 w-3" />
                         </Button>

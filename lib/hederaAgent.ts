@@ -1,16 +1,28 @@
 /**
  * Hedera AgentKit Integration
  * 
- * This module integrates with Hedera AgentKit for AI-powered transaction reasoning
+ * This module integrates with the actual Hedera AgentKit for AI-powered transaction reasoning
  * and autonomous agent operations. It handles natural language processing,
- * intent parsing, and structured transaction generation.
+ * intent parsing, and structured transaction generation using LangChain and Hedera SDK.
  * 
  * Key Features:
- * - Natural language to structured transaction conversion
+ * - Real Hedera AgentKit integration with LangChain
  * - AI agent reasoning for complex DeFi operations
- * - A2A (Agent-to-Agent) messaging format
- * - Transaction intent validation and optimization
+ * - Autonomous transaction execution
+ * - Multiple AI provider support (OpenAI, Claude, Groq, Ollama)
+ * - Hedera network operations (HBAR transfers, token operations, etc.)
  */
+
+import { AgentMode, HederaLangchainToolkit } from 'hedera-agent-kit'
+import { ChatOpenAI } from '@langchain/openai'
+import { ChatAnthropic } from '@langchain/anthropic'
+import { ChatGroq } from '@langchain/groq'
+import { ChatOllama } from '@langchain/ollama'
+import { ChatPromptTemplate } from '@langchain/core/prompts'
+import { AgentExecutor, createToolCallingAgent } from 'langchain/agents'
+import { BufferMemory } from 'langchain/memory'
+import { Client, PrivateKey } from '@hashgraph/sdk'
+import { coreQueriesPlugin, coreAccountPlugin, coreTokenPlugin, coreConsensusPlugin } from 'hedera-agent-kit'
 
 export interface AgentMessage {
   id: string
@@ -21,7 +33,7 @@ export interface AgentMessage {
 }
 
 export interface TransactionIntent {
-  action: 'transfer' | 'bridge' | 'stake' | 'swap' | 'analytics' | 'query'
+  action: 'transfer' | 'bridge' | 'stake' | 'swap' | 'analytics' | 'query' | 'hedera_operation'
   chainFrom?: number
   chainTo?: number
   token?: string
@@ -31,6 +43,10 @@ export interface TransactionIntent {
   parameters?: Record<string, any>
   confidence: number
   reasoning: string
+  hederaOperation?: {
+    type: 'transfer_hbar' | 'create_token' | 'transfer_token' | 'create_topic' | 'submit_message'
+    details: Record<string, any>
+  }
 }
 
 export interface AgentResponse {
@@ -38,27 +54,163 @@ export interface AgentResponse {
   response: string
   suggestions?: string[]
   warnings?: string[]
+  executionResult?: {
+    success: boolean
+    transactionId?: string
+    error?: string
+  }
 }
 
 /**
- * Initialize Hedera AgentKit
- * TODO: Replace with actual Hedera AgentKit initialization
+ * Create LLM instance based on available API keys
+ */
+function createLLM() {
+  // Option 1: OpenAI (requires OPENAI_API_KEY in .env)
+  if (process.env.OPENAI_API_KEY) {
+    return new ChatOpenAI({ 
+      model: 'gpt-4o-mini',
+      temperature: 0.3,
+    })
+  }
+  
+  // Option 2: Anthropic Claude (requires ANTHROPIC_API_KEY in .env)
+  if (process.env.ANTHROPIC_API_KEY) {
+    return new ChatAnthropic({ 
+      model: 'claude-3-haiku-20240307',
+      temperature: 0.3,
+    })
+  }
+  
+  // Option 3: Groq (requires GROQ_API_KEY in .env)
+  if (process.env.GROQ_API_KEY) {
+    return new ChatGroq({ 
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.3,
+    })
+  }
+  
+  // Option 4: Ollama (free, local - requires Ollama installed and running)
+  try {
+    return new ChatOllama({ 
+      model: 'llama3.2',
+      baseUrl: 'http://localhost:11434',
+      temperature: 0.3,
+    })
+  } catch (e) {
+    console.error('No AI provider configured. Please either:')
+    console.error('1. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GROQ_API_KEY in .env')
+    console.error('2. Install and run Ollama locally (https://ollama.com)')
+    throw new Error('No AI provider available')
+  }
+}
+
+/**
+ * Initialize Hedera AgentKit with real implementation
  */
 export function initializeHederaAgent() {
-  // TODO: Initialize Hedera AgentKit with API key
-  // const agent = new HederaAgent({
-  //   apiKey: process.env.HEDERA_AGENT_API_KEY,
-  //   endpoint: process.env.HEDERA_AGENT_ENDPOINT,
-  //   model: 'gpt-4',
-  // })
-  // return agent
-  
-  console.log('Hedera AgentKit initialized (mock)')
-  return {
-    isConnected: true,
-    version: '1.0.0',
-    model: 'gpt-4',
+  try {
+    // Check for required environment variables
+    if (!process.env.HEDERA_ACCOUNT_ID || !process.env.HEDERA_PRIVATE_KEY) {
+      console.warn('Hedera credentials not found. Using mock implementation.')
+      return null
+    }
+
+    // Initialize AI model
+    const llm = createLLM()
+
+    // Hedera client setup (Testnet by default)
+    const client = Client.forTestnet().setOperator(
+      process.env.HEDERA_ACCOUNT_ID,
+      PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY),
+    )
+
+    // Prepare Hedera toolkit with core plugins
+    const hederaAgentToolkit = new HederaLangchainToolkit({
+      client,
+      configuration: {
+        tools: [], // Load all available tools
+        context: {
+          mode: AgentMode.AUTONOMOUS, // Execute transactions autonomously
+        },
+        plugins: [
+          coreQueriesPlugin,    // Query operations
+          coreAccountPlugin,    // Account operations
+          coreTokenPlugin,      // Token operations
+          coreConsensusPlugin,  // Consensus operations
+        ],
+      },
+    })
+
+    // Load the structured chat prompt template
+    const prompt = ChatPromptTemplate.fromMessages([
+      ['system', `You are Orai, an intelligent assistant for cross-chain Web3 transactions and Hedera operations.
+      
+You can help users with:
+- Cross-chain transactions (Ethereum, Polygon, Arbitrum, Base)
+- Hedera network operations (HBAR transfers, token creation, consensus messages)
+- Wallet analytics and transaction history
+- DeFi operations and staking
+
+When users ask about Hedera operations, use the available Hedera tools to execute transactions.
+For cross-chain operations, provide guidance and use the appropriate bridge tools.
+
+Always be helpful, accurate, and provide clear explanations of what you're doing.`],
+      ['placeholder', '{chat_history}'],
+      ['human', '{input}'],
+      ['placeholder', '{agent_scratchpad}'],
+    ])
+
+    // Fetch tools from toolkit
+    const tools = hederaAgentToolkit.getTools()
+
+    // Create the underlying agent
+    const agent = createToolCallingAgent({
+      llm,
+      tools,
+      prompt,
+    })
+
+    // In-memory conversation history
+    const memory = new BufferMemory({
+      memoryKey: 'chat_history',
+      inputKey: 'input',
+      outputKey: 'output',
+      returnMessages: true,
+    })
+
+    // Wrap everything in an executor that will maintain memory
+    const agentExecutor = new AgentExecutor({
+      agent,
+      tools,
+      memory,
+      returnIntermediateSteps: false,
+    })
+
+    console.log('Hedera AgentKit initialized successfully')
+    return {
+      agentExecutor,
+      client,
+      isConnected: true,
+      version: '3.3.0',
+      model: llm.constructor.name,
+    }
+  } catch (error) {
+    console.error('Failed to initialize Hedera AgentKit:', error)
+    return null
   }
+}
+
+// Global agent instance
+let globalAgent: any = null
+
+/**
+ * Get or initialize the global Hedera agent
+ */
+function getGlobalAgent() {
+  if (!globalAgent) {
+    globalAgent = initializeHederaAgent()
+  }
+  return globalAgent
 }
 
 /**
@@ -70,40 +222,109 @@ export function initializeHederaAgent() {
  */
 export async function parseUserIntent(userQuery: string, walletAddress?: string): Promise<AgentResponse> {
   try {
-    // TODO: Replace with actual Hedera AgentKit call
-    // const agent = initializeHederaAgent()
-    // const response = await agent.parseIntent({
-    //   query: userQuery,
-    //   context: {
-    //     walletAddress,
-    //     availableChains: [1, 137, 42161, 8453],
-    //     supportedTokens: ['USDC', 'USDT', 'ETH', 'MATIC'],
-    //   }
-    // })
+    console.log('Parsing user intent with Hedera AgentKit:', userQuery)
     
-    // Mock implementation for demo
-    console.log('Parsing user intent:', userQuery)
+    const agent = getGlobalAgent()
     
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Simple intent parsing based on keywords
+    if (!agent) {
+      console.warn('Hedera AgentKit not available, falling back to mock implementation')
+      return parseUserIntentMock(userQuery, walletAddress)
+    }
+
+    // Check if this is a Hedera-specific operation
     const query = userQuery.toLowerCase()
-    
-    if (query.includes('send') && query.includes('usdc')) {
-      return parseTransferIntent(userQuery, walletAddress)
-    } else if (query.includes('bridge') || (query.includes('from') && query.includes('to'))) {
-      return parseBridgeIntent(userQuery, walletAddress)
-    } else if (query.includes('stake') || query.includes('yield')) {
-      return parseStakeIntent(userQuery, walletAddress)
-    } else if (query.includes('transaction') || query.includes('history') || query.includes('analytics')) {
-      return parseAnalyticsIntent(userQuery, walletAddress)
+    const isHederaOperation = query.includes('hbar') || 
+                             query.includes('hedera') || 
+                             query.includes('create token') ||
+                             query.includes('create topic') ||
+                             query.includes('consensus')
+
+    if (isHederaOperation) {
+      // Use Hedera AgentKit for Hedera operations
+      try {
+        const response = await agent.agentExecutor.invoke({ 
+          input: userQuery,
+          context: {
+            walletAddress,
+            availableChains: [1, 137, 42161, 8453],
+            supportedTokens: ['USDC', 'USDT', 'ETH', 'MATIC', 'HBAR'],
+          }
+        })
+
+        return {
+          intent: {
+            action: 'hedera_operation',
+            walletAddress,
+            confidence: 0.9,
+            reasoning: 'Executed using Hedera AgentKit',
+            hederaOperation: {
+              type: 'transfer_hbar', // This would be determined by the agent
+              details: response
+            }
+          },
+          response: response.output || response,
+          suggestions: [
+            'Check transaction status',
+            'View transaction details',
+            'Monitor network activity'
+          ],
+          executionResult: {
+            success: true,
+            transactionId: response.transactionId
+          }
+        }
+      } catch (error) {
+        console.error('Hedera AgentKit execution error:', error)
+        return {
+          intent: {
+            action: 'query',
+            walletAddress,
+            confidence: 0.3,
+            reasoning: 'Hedera operation failed, providing guidance'
+          },
+          response: `I encountered an error with the Hedera operation: ${error instanceof Error ? error.message : 'Unknown error'}. Let me help you with alternative approaches.`,
+          warnings: ['Hedera operation failed', 'Check your Hedera credentials and network connection']
+        }
+      }
     } else {
-      return parseGenericIntent(userQuery, walletAddress)
+      // Use mock implementation for cross-chain operations
+      return parseUserIntentMock(userQuery, walletAddress)
     }
   } catch (error) {
     console.error('Error parsing user intent:', error)
-    throw new Error('Failed to parse user intent')
+    return {
+      intent: {
+        action: 'query',
+        walletAddress,
+        confidence: 0.1,
+        reasoning: 'Error occurred during intent parsing'
+      },
+      response: 'I encountered an error processing your request. Please try again or rephrase your question.',
+      warnings: ['System error occurred', 'Please check your request and try again']
+    }
+  }
+}
+
+/**
+ * Mock implementation for cross-chain operations (fallback)
+ */
+async function parseUserIntentMock(userQuery: string, walletAddress?: string): Promise<AgentResponse> {
+  // Simulate AI processing delay
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  
+  // Simple intent parsing based on keywords
+  const query = userQuery.toLowerCase()
+  
+  if (query.includes('send') && query.includes('usdc')) {
+    return parseTransferIntent(userQuery, walletAddress)
+  } else if (query.includes('bridge') || (query.includes('from') && query.includes('to'))) {
+    return parseBridgeIntent(userQuery, walletAddress)
+  } else if (query.includes('stake') || query.includes('yield')) {
+    return parseStakeIntent(userQuery, walletAddress)
+  } else if (query.includes('transaction') || query.includes('history') || query.includes('analytics')) {
+    return parseAnalyticsIntent(userQuery, walletAddress)
+  } else {
+    return parseGenericIntent(userQuery, walletAddress)
   }
 }
 
@@ -264,6 +485,77 @@ function getChainName(chainId: number): string {
     8453: 'Base',
   }
   return chains[chainId] || `Chain ${chainId}`
+}
+
+/**
+ * Execute Hedera operation using AgentKit
+ */
+export async function executeHederaOperation(operation: string, parameters: Record<string, any> = {}): Promise<AgentResponse> {
+  try {
+    const agent = getGlobalAgent()
+    
+    if (!agent) {
+      throw new Error('Hedera AgentKit not initialized')
+    }
+
+    const response = await agent.agentExecutor.invoke({ 
+      input: operation,
+      parameters
+    })
+
+    return {
+      intent: {
+        action: 'hedera_operation',
+        confidence: 0.9,
+        reasoning: 'Executed using Hedera AgentKit',
+        hederaOperation: {
+          type: 'transfer_hbar',
+          details: response
+        }
+      },
+      response: response.output || response,
+      executionResult: {
+        success: true,
+        transactionId: response.transactionId
+      }
+    }
+  } catch (error) {
+    console.error('Hedera operation execution error:', error)
+    return {
+      intent: {
+        action: 'hedera_operation',
+        confidence: 0.1,
+        reasoning: 'Hedera operation failed'
+      },
+      response: `Failed to execute Hedera operation: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      executionResult: {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+}
+
+/**
+ * Get Hedera account balance
+ */
+export async function getHederaBalance(): Promise<string> {
+  try {
+    const agent = getGlobalAgent()
+    
+    if (!agent) {
+      throw new Error('Hedera AgentKit not initialized')
+    }
+
+    const response = await agent.agentExecutor.invoke({ 
+      input: "What's my HBAR balance?"
+    })
+
+    return response.output || 'Unable to fetch balance'
+  } catch (error) {
+    console.error('Error fetching Hedera balance:', error)
+    return 'Error fetching balance'
+  }
 }
 
 /**
