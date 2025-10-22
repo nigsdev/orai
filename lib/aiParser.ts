@@ -324,7 +324,7 @@ export function generateContextualSuggestions(
   
   // Based on recent activity
   const recentBridgeTxs = recentTransactions.filter(tx => 
-    tx.method === 'bridge' || tx.tokenTransfers?.some(tt => tt.type === 'bridge')
+    tx.method === 'bridge' || tx.tokenTransfers?.some((tt: any) => tt.type === 'bridge')
   )
   
   if (recentBridgeTxs.length === 0) {

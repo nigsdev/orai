@@ -97,7 +97,7 @@ export default function ToolsPage() {
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {quickActions.map((action, index) => (
-            <Card key={index} variant="glass" hover className="p-4 cursor-pointer" onClick={action.action}>
+            <Card key={index} className="glass-card p-4 cursor-pointer hover:bg-white/10 transition-colors duration-300" onClick={action.action}>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/20 rounded-lg">
                   <action.icon className="h-5 w-5 text-blue-400" />
@@ -112,7 +112,7 @@ export default function ToolsPage() {
         </div>
 
         {/* Available Tools */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5" />
@@ -122,7 +122,7 @@ export default function ToolsPage() {
           <CardContent>
             <ResponsiveGrid cols={{ default: 1, sm: 2, lg: 3 }}>
               {tools.map((tool, index) => (
-                <Card key={index} variant="glass" hover className="p-4">
+                <Card key={index} className="glass-card p-4 hover:bg-white/10 transition-colors duration-300">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/5 rounded-lg">
@@ -148,7 +148,7 @@ export default function ToolsPage() {
 
         {/* Tool Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="h-5 w-5" />
@@ -180,7 +180,7 @@ export default function ToolsPage() {
             </CardContent>
           </Card>
 
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
@@ -214,7 +214,7 @@ export default function ToolsPage() {
         </div>
 
         {/* Settings */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />

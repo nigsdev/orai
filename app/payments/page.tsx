@@ -103,7 +103,7 @@ export default function PaymentsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Send Payment Form */}
-          <Card variant="glass" className="lg:col-span-2">
+          <Card className="glass-card lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
@@ -169,7 +169,7 @@ export default function PaymentsPage() {
           </Card>
 
           {/* Quick Actions */}
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
@@ -191,7 +191,7 @@ export default function PaymentsPage() {
         </div>
 
         {/* Recent Transactions */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
@@ -244,7 +244,7 @@ export default function PaymentsPage() {
         </Card>
 
         {/* Token Balances */}
-        <Card variant="glass">
+        <Card className="glass-card">
           <CardHeader>
             <CardTitle>Your Tokens</CardTitle>
           </CardHeader>

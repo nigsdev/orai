@@ -105,7 +105,7 @@ export async function getWalletAnalytics(address: string, chainId: number = 1): 
     
     // Check if chain is supported by Blockscout
     if (!isChainSupported(chainId)) {
-      throw new Error(`Chain ${chainId} is not supported by Blockscout. Supported chains: Ethereum (1), Polygon (137), Arbitrum (42161), Base (8453)`)
+      throw new Error(`Chain ${chainId} is not supported by Blockscout. Supported chains: Ethereum (1), Optimism (10), Polygon (137), Arbitrum (42161), Base (8453)`)
     }
     
     // Get real data from Blockscout API
@@ -215,7 +215,7 @@ export async function getRecentTransactions(
     
     // Check if chain is supported by Blockscout
     if (!isChainSupported(chainId)) {
-      throw new Error(`Chain ${chainId} is not supported by Blockscout. Supported chains: Ethereum (1), Polygon (137), Arbitrum (42161), Base (8453)`)
+      throw new Error(`Chain ${chainId} is not supported by Blockscout. Supported chains: Ethereum (1), Optimism (10), Polygon (137), Arbitrum (42161), Base (8453)`)
     }
     
     // Get real data from Blockscout API
@@ -376,7 +376,7 @@ function generateMockTransactions(address: string, limit: number = 5): Transacti
  * Check if a chain is supported by Blockscout
  */
 export function isChainSupported(chainId: number): boolean {
-  const supportedChains = [1, 137, 42161, 8453] // Ethereum, Polygon, Arbitrum, Base
+  const supportedChains = [1, 10, 137, 42161, 8453] // Ethereum, Optimism, Polygon, Arbitrum, Base
   return supportedChains.includes(chainId)
 }
 
@@ -386,6 +386,7 @@ export function isChainSupported(chainId: number): boolean {
 export function getBlockscoutUrl(chainId: number): string {
   const urls: Record<number, string> = {
     1: 'https://eth.blockscout.com',
+    10: 'https://optimism.blockscout.com',
     137: 'https://polygon.blockscout.com',
     42161: 'https://arbitrum.blockscout.com',
     8453: 'https://base.blockscout.com',

@@ -42,22 +42,22 @@ export function SimpleWalletCard() {
       }
 
       // Request account access
-      const accounts = await window.ethereum.request({
+      const accounts = await window.ethereum?.request({
         method: 'eth_requestAccounts',
       })
 
-      if (accounts.length > 0) {
+      if (accounts && accounts.length > 0) {
         const address = accounts[0]
         
         // Get chain ID
-        const chainId = await window.ethereum.request({
+        const chainId = await window.ethereum?.request({
           method: 'eth_chainId',
         })
 
         setWallet({
           address,
           isConnected: true,
-          chainId: parseInt(chainId, 16),
+          chainId: chainId ? parseInt(chainId, 16) : null,
         })
 
         toast({
@@ -148,12 +148,12 @@ export function SimpleWalletCard() {
         })
       }
 
-      window.ethereum.on('accountsChanged', handleAccountsChanged)
-      window.ethereum.on('chainChanged', handleChainChanged)
+      window.ethereum?.on('accountsChanged', handleAccountsChanged)
+      window.ethereum?.on('chainChanged', handleChainChanged)
 
       return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
-        window.ethereum.removeListener('chainChanged', handleChainChanged)
+        window.ethereum?.removeListener('accountsChanged', handleAccountsChanged)
+        window.ethereum?.removeListener('chainChanged', handleChainChanged)
       }
     }
   }, [isMetaMaskAvailable])

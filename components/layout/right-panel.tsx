@@ -71,7 +71,7 @@ export function RightPanel() {
   return (
     <div className="hidden lg:block w-80 space-y-6">
       {/* Transaction Volume Chart */}
-      <Card variant="glass">
+      <Card className="glass-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Transaction Volume</CardTitle>
@@ -135,7 +135,7 @@ export function RightPanel() {
       </Card>
 
       {/* On-Chain Metrics */}
-      <Card variant="glass">
+      <Card className="glass-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>On-Chain Metrics</CardTitle>

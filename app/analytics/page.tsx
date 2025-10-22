@@ -91,10 +91,12 @@ export default function AnalyticsPage() {
               key={index}
               title={stat.title}
               value={stat.value}
-              change={stat.change}
-              changeType={stat.changeType}
               icon={stat.icon}
               description={stat.description}
+              trend={{
+                value: parseFloat(stat.change.replace(/[+%]/g, '')),
+                label: stat.description
+              }}
             />
           ))}
         </ResponsiveGrid>
@@ -104,7 +106,7 @@ export default function AnalyticsPage() {
 
         {/* Additional Analytics Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Transaction History</CardTitle>
             </CardHeader>
@@ -161,7 +163,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card variant="glass">
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Portfolio Allocation</CardTitle>
             </CardHeader>

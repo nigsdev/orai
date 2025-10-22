@@ -12,10 +12,9 @@ export function MobileMenuButton({ isOpen, onToggle }: MobileMenuButtonProps) {
   return (
     <IconButton
       icon={isOpen ? X : Menu}
-      variant="glass"
+      className="glass-card md:hidden fixed top-4 left-4 z-50"
       size="md"
       onClick={onToggle}
-      className="md:hidden fixed top-4 left-4 z-50"
     />
   )
 }

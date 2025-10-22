@@ -36,11 +36,11 @@ export function ResponsiveGrid({
 
   const responsiveClasses = [
     'grid',
-    colClasses[cols.default || 1],
-    cols.sm && `sm:${colClasses[cols.sm]}`,
-    cols.md && `md:${colClasses[cols.md]}`,
-    cols.lg && `lg:${colClasses[cols.lg]}`,
-    cols.xl && `xl:${colClasses[cols.xl]}`,
+    colClasses[(cols.default || 1) as keyof typeof colClasses],
+    cols.sm && `sm:${colClasses[cols.sm as keyof typeof colClasses]}`,
+    cols.md && `md:${colClasses[cols.md as keyof typeof colClasses]}`,
+    cols.lg && `lg:${colClasses[cols.lg as keyof typeof colClasses]}`,
+    cols.xl && `xl:${colClasses[cols.xl as keyof typeof colClasses]}`,
     gapClasses[gap]
   ].filter(Boolean).join(' ')
 
