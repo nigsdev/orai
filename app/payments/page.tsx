@@ -5,26 +5,91 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ResponsiveGrid } from "@/components/ui/responsive-grid"
-import { Send, ArrowUpRight, ArrowDownLeft, CreditCard, Wallet } from "lucide-react"
-import { useState } from "react"
+import { Send, ArrowUpRight, ArrowDownLeft, CreditCard, Wallet, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useChatStore } from "@/lib/store"
+import { getWalletAnalytics, getTokenBalances } from "@/lib/blockscout"
+import { getUnifiedBalances } from "@/lib/avail"
+import { useAvailNexus } from "@/hooks/useAvailNexus"
 
 export default function PaymentsPage() {
   const [recipient, setRecipient] = useState("")
   const [amount, setAmount] = useState("")
   const [selectedToken, setSelectedToken] = useState("ETH")
+  const [loading, setLoading] = useState(true)
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [unifiedBalances, setUnifiedBalances] = useState<any>(null)
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([])
+  const [tokens, setTokens] = useState<any[]>([])
 
-  const recentTransactions = [
-    { id: 1, type: "send", amount: "0.5", token: "ETH", to: "0x742d...35Cc", time: "2 hours ago", status: "completed" },
-    { id: 2, type: "receive", amount: "1.2", token: "ETH", from: "0x8f3a...9B2d", time: "5 hours ago", status: "completed" },
-    { id: 3, type: "send", amount: "100", token: "DAI", to: "0x3c4b...7E8f", time: "1 day ago", status: "completed" },
-    { id: 4, type: "receive", amount: "250", token: "DAI", from: "0x9a1b...4C5d", time: "2 days ago", status: "completed" },
-  ]
+  const { wallet } = useChatStore()
+  const { executeBridge, isReady } = useAvailNexus()
 
-  const tokens = [
-    { symbol: "ETH", name: "Ethereum", balance: "2.45", value: "$4,890.50" },
-    { symbol: "DAI", name: "Dai Stablecoin", balance: "1,250.00", value: "$1,250.00" },
-    { symbol: "USDC", name: "USD Coin", balance: "500.00", value: "$500.00" },
-  ]
+  // Fetch real wallet data
+  useEffect(() => {
+    const fetchWalletData = async () => {
+      if (wallet.isConnected && wallet.address) {
+        setLoading(true)
+        try {
+          console.log('Fetching real wallet data for payments page:', wallet.address)
+          
+          // Fetch analytics and transactions
+          const analyticsData = await getWalletAnalytics(wallet.address, wallet.chainId || 1)
+          setAnalytics(analyticsData)
+          
+          // Set real transactions
+          setRecentTransactions(analyticsData.recentTransactions || [])
+          
+          // Fetch token balances
+          const tokenBalances = await getTokenBalances(wallet.address, wallet.chainId || 1)
+          setTokens(tokenBalances || [])
+          
+          // Try to get unified balances from Avail
+          try {
+            const unified = await getUnifiedBalances()
+            setUnifiedBalances(unified)
+          } catch (error) {
+            console.log('Unified balances not available, using regular balances')
+          }
+          
+        } catch (error) {
+          console.error('Error fetching wallet data:', error)
+          // Fallback to empty data
+          setRecentTransactions([])
+          setTokens([])
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        setLoading(false)
+      }
+    }
+
+    fetchWalletData()
+  }, [wallet.isConnected, wallet.address, wallet.chainId])
+
+  // Handle payment sending
+  const handleSendPayment = async () => {
+    if (!recipient || !amount || !selectedToken) {
+      alert('Please fill in all fields')
+      return
+    }
+
+    if (!isReady) {
+      alert('Avail SDK not ready. Please connect your wallet.')
+      return
+    }
+
+    try {
+      // This would integrate with your Avail bridge functionality
+      console.log('Sending payment:', { recipient, amount, selectedToken })
+      // You can integrate this with your existing bridge functionality
+      alert('Payment functionality will be integrated with Avail bridge')
+    } catch (error) {
+      console.error('Error sending payment:', error)
+      alert('Failed to send payment')
+    }
+  }
 
   return (
     <MainLayout>
@@ -88,9 +153,17 @@ export default function PaymentsPage() {
                 </div>
               </div>
 
-              <Button className="w-full neon-button">
-                <Send className="h-4 w-4 mr-2" />
-                Send Payment
+              <Button 
+                className="w-full neon-button" 
+                onClick={handleSendPayment}
+                disabled={!isReady || loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                {loading ? 'Loading...' : 'Send Payment'}
               </Button>
             </CardContent>
           </Card>
@@ -123,35 +196,50 @@ export default function PaymentsPage() {
             <CardTitle>Recent Transactions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recentTransactions.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      tx.type === 'send' ? 'bg-red-500/20' : 'bg-green-500/20'
-                    }`}>
-                      {tx.type === 'send' ? (
-                        <ArrowUpRight className="w-4 h-4 text-red-400" />
-                      ) : (
-                        <ArrowDownLeft className="w-4 h-4 text-green-400" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-white font-medium">
-                        {tx.type === 'send' ? 'Sent' : 'Received'} {tx.amount} {tx.token}
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
+                <span className="ml-2 text-gray-400">Loading transactions...</span>
+              </div>
+            ) : recentTransactions.length > 0 ? (
+              <div className="space-y-3">
+                {recentTransactions.map((tx, index) => (
+                  <div key={tx.hash || index} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'bg-red-500/20' : 'bg-green-500/20'
+                      }`}>
+                        {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? (
+                          <ArrowUpRight className="w-4 h-4 text-red-400" />
+                        ) : (
+                          <ArrowDownLeft className="w-4 h-4 text-green-400" />
+                        )}
                       </div>
+                      <div>
+                        <div className="text-white font-medium">
+                          {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
+                        </div>
+                        <div className="text-gray-400 text-sm">
+                          {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === wallet.address?.toLowerCase() ? tx.to : tx.from}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
                       <div className="text-gray-400 text-sm">
-                        {tx.type === 'send' ? 'To' : 'From'} {tx.type === 'send' ? tx.to : tx.from}
+                        {new Date(tx.timestamp).toLocaleDateString()}
+                      </div>
+                      <div className={`text-xs ${tx.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                        {tx.status === 'success' ? '✓ completed' : '✗ failed'}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-gray-400 text-sm">{tx.time}</div>
-                    <div className="text-green-400 text-xs">✓ {tx.status}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                {wallet.isConnected ? 'No transactions found' : 'Connect your wallet to view transactions'}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -161,27 +249,38 @@ export default function PaymentsPage() {
             <CardTitle>Your Tokens</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveGrid cols={{ default: 1, sm: 2, lg: 3 }}>
-              {tokens.map((token) => (
-                <Card key={token.symbol} variant="glass" hover className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
-                        <span className="text-blue-400 text-lg font-bold">{token.symbol[0]}</span>
-                      </div>
-                      <div>
-                        <div className="text-white font-medium">{token.name}</div>
-                        <div className="text-gray-400 text-sm">{token.symbol}</div>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
+                <span className="ml-2 text-gray-400">Loading token balances...</span>
+              </div>
+            ) : tokens.length > 0 ? (
+              <ResponsiveGrid cols={{ default: 1, sm: 2, lg: 3 }}>
+                {tokens.map((token, index) => (
+                  <Card key={token.symbol || index} variant="glass" hover className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                          <span className="text-blue-400 text-lg font-bold">{token.symbol?.[0] || 'T'}</span>
+                        </div>
+                        <div>
+                          <div className="text-white font-medium">{token.token || token.symbol}</div>
+                          <div className="text-gray-400 text-sm">{token.symbol}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-white text-lg font-semibold">{token.balance} {token.symbol}</div>
-                    <div className="text-gray-400 text-sm">{token.value}</div>
-                  </div>
-                </Card>
-              ))}
-            </ResponsiveGrid>
+                    <div className="space-y-1">
+                      <div className="text-white text-lg font-semibold">{token.balance} {token.symbol}</div>
+                      <div className="text-gray-400 text-sm">{token.value}</div>
+                    </div>
+                  </Card>
+                ))}
+              </ResponsiveGrid>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                {wallet.isConnected ? 'No token balances found' : 'Connect your wallet to view token balances'}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

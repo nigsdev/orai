@@ -65,7 +65,7 @@ export function RightPanel() {
 
   // Calculate total volume from real data
   const totalVolume = analytics?.recentTransactions?.length > 0 ? 
-    analytics.recentTransactions.reduce((sum: number, tx: any) => sum + (parseFloat(tx.value) * 2000), 0) : 18670
+    analytics.recentTransactions.reduce((sum: number, tx: any) => sum + (parseFloat(tx.value) * 2000), 0) : 0
   const avgDaily = totalVolume / 7
 
   return (

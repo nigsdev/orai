@@ -54,14 +54,28 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        result = await executeCrossChainIntent({
-          chainFrom,
-          chainTo,
-          token,
-          amount,
-          walletAddress,
-          recipientAddress,
-        })
+        try {
+          result = await executeCrossChainIntent({
+            chainFrom,
+            chainTo,
+            token,
+            amount,
+            walletAddress,
+            recipientAddress,
+          })
+        } catch (error) {
+          return NextResponse.json(
+            { 
+              success: false,
+              error: error instanceof Error ? error.message : 'Bridge operation failed',
+              result: {
+                status: 'failed',
+                error: error instanceof Error ? error.message : 'Unknown error'
+              }
+            },
+            { status: 500 }
+          )
+        }
         break
 
       case 'transfer':

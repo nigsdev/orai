@@ -53,7 +53,26 @@ export async function POST(request: NextRequest) {
             
             transactionHash = bridgeResult.transactionHash
             status = bridgeResult.status
-            response = `✅ ${agentResponse.intent.amount} ${agentResponse.intent.token} successfully bridged from ${getChainName(agentResponse.intent.chainFrom)} to ${getChainName(agentResponse.intent.chainTo)}. Gas: ${bridgeResult.gasCost}. Tx: ${bridgeResult.transactionHash.slice(0, 10)}...`
+            
+            if (bridgeResult.status === 'success') {
+              response = `✅ **Bridge Successful!**\n\n` +
+                `**Amount:** ${agentResponse.intent.amount} ${agentResponse.intent.token}\n` +
+                `**Route:** ${getChainName(agentResponse.intent.chainFrom)} → ${getChainName(agentResponse.intent.chainTo)}\n` +
+                `**Gas Cost:** ${bridgeResult.gasCost}\n` +
+                `**Estimated Time:** ${bridgeResult.estimatedTime}\n` +
+                `**Transaction:** ${bridgeResult.transactionHash.slice(0, 10)}...\n\n` +
+                `Your tokens are being bridged and will arrive in approximately ${bridgeResult.estimatedTime}.`
+            } else if (bridgeResult.status === 'pending') {
+              response = `🔄 **Bridge Initiated**\n\n` +
+                `**Amount:** ${agentResponse.intent.amount} ${agentResponse.intent.token}\n` +
+                `**Route:** ${getChainName(agentResponse.intent.chainFrom)} → ${getChainName(agentResponse.intent.chainTo)}\n` +
+                `**Status:** Processing...\n` +
+                `**Transaction:** ${bridgeResult.transactionHash.slice(0, 10)}...\n\n` +
+                `Your bridge transaction is being processed. You can track the progress above.`
+            } else {
+              response = `❌ **Bridge Failed**\n\n` +
+                `The bridge operation could not be completed. Please try again or contact support.`
+            }
             
             metadata = {
               type: 'bridge',
@@ -63,7 +82,9 @@ export async function POST(request: NextRequest) {
               toChain: getChainName(agentResponse.intent.chainTo),
             }
           } catch (error) {
-            response = `❌ Failed to execute bridge transaction: ${error instanceof Error ? error.message : 'Unknown error'}`
+            response = `❌ **Bridge Failed**\n\n` +
+              `**Error:** ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+              `Please check your wallet connection and try again. Make sure you have sufficient balance and gas fees.`
             status = 'failed'
           }
         }

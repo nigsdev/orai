@@ -18,6 +18,15 @@ export interface Message {
   }
 }
 
+export interface PaymentState {
+  isProcessing: boolean
+  currentStep: any | null
+  progress: number
+  error: string | null
+  transactionHash: string | null
+  bridgeId: string | null
+}
+
 export interface WalletState {
   address: string | null
   chainId: number | null
@@ -29,10 +38,13 @@ interface ChatState {
   messages: Message[]
   isLoading: boolean
   wallet: WalletState
+  payment: PaymentState
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void
   updateMessage: (id: string, updates: Partial<Message>) => void
   setLoading: (loading: boolean) => void
   setWallet: (wallet: Partial<WalletState>) => void
+  setPaymentState: (payment: Partial<PaymentState>) => void
+  clearPaymentState: () => void
   clearMessages: () => void
   resetChat: () => void
 }
@@ -54,6 +66,14 @@ export const useChatStore = create<ChatState>()(
         chainId: null,
         balance: null,
         isConnected: false,
+      },
+      payment: {
+        isProcessing: false,
+        currentStep: null,
+        progress: 0,
+        error: null,
+        transactionHash: null,
+        bridgeId: null,
       },
       addMessage: (message) => {
         const newMessage: Message = {
@@ -77,6 +97,21 @@ export const useChatStore = create<ChatState>()(
         set((state) => ({
           wallet: { ...state.wallet, ...wallet },
         })),
+      setPaymentState: (payment) =>
+        set((state) => ({
+          payment: { ...state.payment, ...payment },
+        })),
+      clearPaymentState: () =>
+        set({
+          payment: {
+            isProcessing: false,
+            currentStep: null,
+            progress: 0,
+            error: null,
+            transactionHash: null,
+            bridgeId: null,
+          },
+        }),
       clearMessages: () =>
         set({
           messages: [
@@ -106,6 +141,14 @@ export const useChatStore = create<ChatState>()(
             chainId: null,
             balance: null,
             isConnected: false,
+          },
+          payment: {
+            isProcessing: false,
+            currentStep: null,
+            progress: 0,
+            error: null,
+            transactionHash: null,
+            bridgeId: null,
           },
         })
       },
