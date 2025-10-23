@@ -19,6 +19,7 @@ export function formatAmount(amount: string, decimals: number = 18) {
 export function getChainName(chainId: number) {
   const chains: Record<number, string> = {
     1: 'Ethereum',
+    10: 'Optimism',
     137: 'Polygon',
     42161: 'Arbitrum',
     8453: 'Base',
@@ -29,6 +30,7 @@ export function getChainName(chainId: number) {
 export function getChainIcon(chainId: number) {
   const icons: Record<number, string> = {
     1: '🔷',
+    10: '🔴',
     137: '🟣',
     42161: '🔵',
     8453: '🔵',

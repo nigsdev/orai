@@ -107,6 +107,7 @@ export async function executeCrossChainIntent(intent: CrossChainIntent): Promise
 export function getSupportedChains() {
   return [
     { id: 1, name: 'Ethereum', symbol: 'ETH' },
+    { id: 10, name: 'Optimism', symbol: 'ETH' },
     { id: 137, name: 'Polygon', symbol: 'MATIC' },
     { id: 42161, name: 'Arbitrum', symbol: 'ETH' },
     { id: 8453, name: 'Base', symbol: 'ETH' },
@@ -122,6 +123,11 @@ export function getAvailableTokens(chainId: number) {
       { symbol: 'USDC', address: '0xA0b86a33E6441c8C06DdD5B8C4b8b4b8b4b8b4b8b', decimals: 6 },
       { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6 },
       { symbol: 'WETH', address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', decimals: 18 },
+    ],
+    10: [
+      { symbol: 'USDC', address: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607', decimals: 6 },
+      { symbol: 'USDT', address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', decimals: 6 },
+      { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 },
     ],
     137: [
       { symbol: 'USDC', address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', decimals: 6 },

@@ -141,13 +141,69 @@ export default function PaymentsPage() {
     }
 
     try {
-      // This would integrate with your Avail bridge functionality
-      console.log('Sending payment:', { recipient, amount, selectedToken })
-      // You can integrate this with your existing bridge functionality
-      alert('Payment functionality will be integrated with Avail bridge')
+      setLoading(true)
+      
+      // Create cross-chain intent
+      const intent = {
+        chainFrom: actualChainId || 1,
+        chainTo: actualChainId || 1, // Same chain for now
+        token: selectedToken,
+        amount: amount,
+        walletAddress: address!,
+        recipientAddress: recipient
+      }
+
+      console.log('Executing payment with intent:', intent)
+      
+      // Execute bridge operation
+      const result = await executeBridge(intent)
+      
+      console.log('Payment result:', result)
+      alert(`Payment successful! Transaction: ${result.transactionHash}`)
+      
+      // Refresh wallet data
+      window.location.reload()
+      
     } catch (error) {
-      console.error('Error sending payment:', error)
-      alert('Failed to send payment')
+      console.error('Payment failed:', error)
+      alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Test cross-chain payment function
+  const testCrossChainPayment = async () => {
+    if (!address) {
+      alert('Please connect your wallet first')
+      return
+    }
+
+    try {
+      setLoading(true)
+      
+      // Test cross-chain bridge from current chain to Polygon
+      const testIntent = {
+        chainFrom: actualChainId || 1,
+        chainTo: 137, // Polygon
+        token: 'USDC',
+        amount: '1',
+        walletAddress: address,
+        recipientAddress: address // Send to self for testing
+      }
+
+      console.log('Testing cross-chain payment:', testIntent)
+      
+      const result = await executeBridge(testIntent)
+      
+      console.log('Cross-chain test result:', result)
+      alert(`Cross-chain test successful! Bridge ID: ${result.bridgeId}`)
+      
+    } catch (error) {
+      console.error('Cross-chain test failed:', error)
+      alert(`Cross-chain test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoading(false)
     }
   }
 
