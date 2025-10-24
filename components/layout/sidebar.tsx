@@ -87,12 +87,13 @@ export function Sidebar({ isOpen = false, onToggle }: SidebarProps) {
               className="flex items-center gap-3 font-bold text-white text-xl hover:glow-accent-hover transition-all duration-300" 
               href="/"
             >
-              <div className="relative">
+              {/* <div className="relative">
                 <div className="absolute inset-0 bg-accent-blue-500/30 rounded-lg blur-lg"></div>
                 <div className="relative bg-accent-blue-500 text-white px-3 py-1 rounded-lg font-bold text-lg glow-accent">
-                  Orai
+                  <img src="/orailogo.png" alt="ORAI Logo" width={100} height={50} />
                 </div>
-              </div>
+              </div> */}
+              <img src="/orailogo.png" alt="ORAI Logo" width={100} height={50} />
             </Link>
           </div>
 
