@@ -85,24 +85,50 @@ export default function PaymentsPage() {
     }
   }, [])
 
-  // Fetch real wallet data
+  // Fetch real wallet data from multiple chains (like Analytics page)
   useEffect(() => {
-    const fetchWalletData = async () => {
+    const fetchMultiChainWalletData = async () => {
       if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching real wallet data for payments page:', address, 'on chain:', actualChainId)
+          console.log('Fetching multi-chain wallet data for payments page:', address)
           
-          // Fetch analytics and transactions
-          const analyticsData = await getWalletAnalytics(address, actualChainId)
-          setAnalytics(analyticsData)
+          // Fetch data from Ethereum, OP Mainnet, and OP Sepolia (like Analytics page)
+          const [ethereumData, optimismData, opSepoliaData] = await Promise.allSettled([
+            getWalletAnalytics(address, 1), // Ethereum
+            getWalletAnalytics(address, 10), // OP Mainnet
+            getWalletAnalytics(address, 11155420) // OP Sepolia
+          ])
+
+          const ethereum = ethereumData.status === 'fulfilled' ? ethereumData.value : null
+          const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
+          const opSepolia = opSepoliaData.status === 'fulfilled' ? opSepoliaData.value : null
+
+          console.log('📊 Ethereum data for payments:', ethereum)
+          console.log('📊 OP Mainnet data for payments:', optimism)
+          console.log('📊 OP Sepolia data for payments:', opSepolia)
+
+          // Combine transactions from all chains
+          const allTransactions = [
+            ...(ethereum?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Ethereum' })),
+            ...(optimism?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Mainnet' })),
+            ...(opSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Sepolia' }))
+          ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+          // Combine token balances from all chains
+          const allTokens = [
+            ...(ethereum?.wallet?.tokenBalances || []).map((token: any) => ({ ...token, chain: 'Ethereum' })),
+            ...(optimism?.wallet?.tokenBalances || []).map((token: any) => ({ ...token, chain: 'OP Mainnet' })),
+            ...(opSepolia?.wallet?.tokenBalances || []).map((token: any) => ({ ...token, chain: 'OP Sepolia' }))
+          ]
+
+          // Set the combined data
+          setRecentTransactions(allTransactions)
+          setTokens(allTokens)
           
-          // Set real transactions
-          setRecentTransactions(analyticsData.recentTransactions || [])
-          
-          // Fetch token balances
-          const tokenBalances = await getTokenBalances(address, actualChainId)
-          setTokens(tokenBalances || [])
+          // Set analytics data (use the current chain's data for analytics)
+          const currentChainData = actualChainId === 10 ? optimism : ethereum
+          setAnalytics(currentChainData)
           
           // Try to get unified balances from Avail
           try {
@@ -113,7 +139,7 @@ export default function PaymentsPage() {
           }
           
         } catch (error) {
-          console.error('Error fetching wallet data:', error)
+          console.error('Error fetching multi-chain wallet data:', error)
           // Fallback to empty data
           setRecentTransactions([])
           setTokens([])
@@ -125,7 +151,7 @@ export default function PaymentsPage() {
       }
     }
 
-    fetchWalletData()
+    fetchMultiChainWalletData()
   }, [isConnected, address, actualChainId, manualChainId])
 
   // Handle payment sending
@@ -350,14 +376,19 @@ export default function PaymentsPage() {
                           <ArrowDownLeft className="w-4 h-4 text-green-400" />
                         )}
                       </div>
-                      <div>
-                        <div className="text-white font-medium">
-                          {tx.from?.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
+                        <div>
+                          <div className="text-white font-medium">
+                            {tx.from?.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            {tx.from?.toLowerCase() === address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === address?.toLowerCase() ? tx.to : tx.from}
+                          </div>
+                          {tx.chain && (
+                            <div className="text-xs text-blue-400">
+                              {tx.chain}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-gray-400 text-sm">
-                          {tx.from?.toLowerCase() === address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === address?.toLowerCase() ? tx.to : tx.from}
-                        </div>
-                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-gray-400 text-sm">
@@ -401,6 +432,11 @@ export default function PaymentsPage() {
                         <div>
                           <div className="text-white font-medium">{token.token || token.symbol}</div>
                           <div className="text-gray-400 text-sm">{token.symbol}</div>
+                          {token.chain && (
+                            <div className="text-xs text-blue-400">
+                              {token.chain}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

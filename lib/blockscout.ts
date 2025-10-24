@@ -389,7 +389,7 @@ function generateMockTransactions(address: string, limit: number = 5): Transacti
  * Check if a chain is supported by Blockscout
  */
 export function isChainSupported(chainId: number): boolean {
-  const supportedChains = [1, 10, 137, 42161, 8453] // Ethereum, Optimism, Polygon, Arbitrum, Base
+  const supportedChains = [1, 10, 11155420, 137, 42161, 8453] // Ethereum, Optimism, OP Sepolia, Polygon, Arbitrum, Base
   return supportedChains.includes(chainId)
 }
 
@@ -400,6 +400,7 @@ export function getBlockscoutUrl(chainId: number): string {
   const urls: Record<number, string> = {
     1: 'https://eth.blockscout.com',
     10: 'https://explorer.optimism.io',
+    11155420: 'https://sepolia-optimism.blockscout.com',
     137: 'https://polygon.blockscout.com',
     42161: 'https://arbitrum.blockscout.com',
     8453: 'https://base.blockscout.com',

@@ -18,6 +18,7 @@ export default function AnalyticsPage() {
   const [multiChainData, setMultiChainData] = useState<any>({
     ethereum: null,
     optimism: null,
+    opSepolia: null,
     combined: null
   })
 
@@ -29,33 +30,38 @@ export default function AnalyticsPage() {
         try {
           console.log('🔄 Fetching multi-chain analytics for wallet:', address)
           
-          // Fetch data from both Ethereum and OP Mainnet
-          const [ethereumData, optimismData] = await Promise.allSettled([
+          // Fetch data from Ethereum, OP Mainnet, and OP Sepolia
+          const [ethereumData, optimismData, opSepoliaData] = await Promise.allSettled([
             getWalletAnalytics(address, 1), // Ethereum
-            getWalletAnalytics(address, 10) // OP Mainnet
+            getWalletAnalytics(address, 10), // OP Mainnet
+            getWalletAnalytics(address, 11155420) // OP Sepolia
           ])
 
           const ethereum = ethereumData.status === 'fulfilled' ? ethereumData.value : null
           const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
+          const opSepolia = opSepoliaData.status === 'fulfilled' ? opSepoliaData.value : null
 
           console.log('📊 Ethereum data:', ethereum)
           console.log('📊 OP Mainnet data:', optimism)
+          console.log('📊 OP Sepolia data:', opSepolia)
 
           // Combine the data
           const combined = {
-            totalBalance: (parseFloat(ethereum?.wallet?.balance || '0') + parseFloat(optimism?.wallet?.balance || '0')).toFixed(4),
-            totalTransactions: (ethereum?.wallet?.transactionCount || 0) + (optimism?.wallet?.transactionCount || 0),
+            totalBalance: (parseFloat(ethereum?.wallet?.balance || '0') + parseFloat(optimism?.wallet?.balance || '0') + parseFloat(opSepolia?.wallet?.balance || '0')).toFixed(4),
+            totalTransactions: (ethereum?.wallet?.transactionCount || 0) + (optimism?.wallet?.transactionCount || 0) + (opSepolia?.wallet?.transactionCount || 0),
             allTransactions: [
               ...(ethereum?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Ethereum' })),
-              ...(optimism?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Mainnet' }))
+              ...(optimism?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Mainnet' })),
+              ...(opSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Sepolia' }))
             ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
             tokenBalances: {
               ethereum: ethereum?.wallet?.tokenBalances || [],
-              optimism: optimism?.wallet?.tokenBalances || []
+              optimism: optimism?.wallet?.tokenBalances || [],
+              opSepolia: opSepolia?.wallet?.tokenBalances || []
             }
           }
 
-          setMultiChainData({ ethereum, optimism, combined })
+          setMultiChainData({ ethereum, optimism, opSepolia, combined })
           setAnalytics(combined)
           
           console.log('✅ Combined analytics data:', combined)

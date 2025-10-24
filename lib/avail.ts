@@ -108,6 +108,7 @@ export function getSupportedChains() {
   return [
     { id: 1, name: 'Ethereum', symbol: 'ETH' },
     { id: 10, name: 'Optimism', symbol: 'ETH' },
+    { id: 11155420, name: 'OP Sepolia', symbol: 'ETH' },
     { id: 137, name: 'Polygon', symbol: 'MATIC' },
     { id: 42161, name: 'Arbitrum', symbol: 'ETH' },
     { id: 8453, name: 'Base', symbol: 'ETH' },
@@ -127,6 +128,10 @@ export function getAvailableTokens(chainId: number) {
     10: [
       { symbol: 'USDC', address: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607', decimals: 6 },
       { symbol: 'USDT', address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', decimals: 6 },
+      { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 },
+    ],
+    11155420: [
+      { symbol: 'USDC', address: '0x5fd84259d66Cd45833020E30E5e0eA7b5c4C9b6C', decimals: 6 },
       { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 },
     ],
     137: [

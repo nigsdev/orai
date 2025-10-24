@@ -22,11 +22,12 @@ export function Header() {
   const { toast } = useToast()
 
   const networks = [
-    { name: "Ethereum", symbol: "ETH" },
-    { name: "Optimism", symbol: "OP" },
-    { name: "Polygon", symbol: "MATIC" },
-    { name: "Arbitrum", symbol: "ARB" },
-    { name: "Base", symbol: "BASE" },
+    { name: "Ethereum", symbol: "ETH", chainId: 1 },
+    { name: "Optimism", symbol: "OP", chainId: 10 },
+    { name: "OP Sepolia", symbol: "ETH", chainId: 11155420 },
+    { name: "Polygon", symbol: "MATIC", chainId: 137 },
+    { name: "Arbitrum", symbol: "ARB", chainId: 42161 },
+    { name: "Base", symbol: "BASE", chainId: 8453 },
   ]
 
   // Check if we're on the client side and MetaMask availability
@@ -72,9 +73,16 @@ export function Header() {
       }
 
       const handleChainChanged = (chainId: string) => {
+        const newChainId = parseInt(chainId, 16)
         setWallet({
-          chainId: parseInt(chainId, 16),
+          chainId: newChainId,
         })
+        
+        // Update the selected network in UI to match the actual chain
+        const network = networks.find(n => n.chainId === newChainId)
+        if (network) {
+          setSelectedNetwork(network.name)
+        }
       }
 
       window.ethereum?.on('accountsChanged', handleAccountsChanged)
@@ -86,6 +94,16 @@ export function Header() {
       }
     }
   }, [isMetaMaskAvailable, setWallet])
+
+  // Update selected network when wallet chain changes
+  useEffect(() => {
+    if (wallet.chainId) {
+      const network = networks.find(n => n.chainId === wallet.chainId)
+      if (network) {
+        setSelectedNetwork(network.name)
+      }
+    }
+  }, [wallet.chainId])
 
   const connectWallet = async () => {
     try {
@@ -161,12 +179,145 @@ export function Header() {
     }
   }
 
+  const switchChain = async (targetChainId: number) => {
+    if (!isMetaMaskAvailable) {
+      toast({
+        title: 'MetaMask Not Available',
+        description: 'Please install MetaMask to switch networks.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      // Check if the chain is already connected
+      const currentChainId = await window.ethereum?.request({ method: 'eth_chainId' })
+      const currentChainIdNumber = parseInt(currentChainId, 16)
+      
+      if (currentChainIdNumber === targetChainId) {
+        toast({
+          title: 'Already Connected',
+          description: `You're already connected to ${networks.find(n => n.chainId === targetChainId)?.name}`,
+        })
+        return
+      }
+
+      // Try to switch to the target chain
+      await window.ethereum?.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${targetChainId.toString(16)}` }],
+      })
+
+      // Update the selected network in UI
+      const targetNetwork = networks.find(n => n.chainId === targetChainId)
+      if (targetNetwork) {
+        setSelectedNetwork(targetNetwork.name)
+      }
+
+      toast({
+        title: 'Network Switched',
+        description: `Successfully switched to ${targetNetwork?.name}`,
+      })
+
+    } catch (error: any) {
+      // If the chain is not added to MetaMask, try to add it
+      if (error.code === 4902) {
+        try {
+          await addChainToMetaMask(targetChainId)
+        } catch (addError) {
+          console.error('Error adding chain:', addError)
+          toast({
+            title: 'Failed to Add Network',
+            description: `Could not add ${networks.find(n => n.chainId === targetChainId)?.name} to MetaMask.`,
+            variant: 'destructive',
+          })
+        }
+      } else {
+        console.error('Error switching chain:', error)
+        toast({
+          title: 'Failed to Switch Network',
+          description: `Could not switch to ${networks.find(n => n.chainId === targetChainId)?.name}.`,
+          variant: 'destructive',
+        })
+      }
+    }
+  }
+
+  const addChainToMetaMask = async (chainId: number) => {
+    const chainConfigs: Record<number, any> = {
+      1: {
+        chainId: '0x1',
+        chainName: 'Ethereum Mainnet',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://mainnet.infura.io/v3/'],
+        blockExplorerUrls: ['https://etherscan.io']
+      },
+      10: {
+        chainId: '0xa',
+        chainName: 'Optimism',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://mainnet.optimism.io'],
+        blockExplorerUrls: ['https://optimistic.etherscan.io']
+      },
+      11155420: {
+        chainId: '0xaa37dc',
+        chainName: 'OP Sepolia',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://sepolia.optimism.io'],
+        blockExplorerUrls: ['https://sepolia-optimism.etherscan.io']
+      },
+      137: {
+        chainId: '0x89',
+        chainName: 'Polygon',
+        nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+        rpcUrls: ['https://polygon-rpc.com'],
+        blockExplorerUrls: ['https://polygonscan.com']
+      },
+      42161: {
+        chainId: '0xa4b1',
+        chainName: 'Arbitrum One',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://arb1.arbitrum.io/rpc'],
+        blockExplorerUrls: ['https://arbiscan.io']
+      },
+      8453: {
+        chainId: '0x2105',
+        chainName: 'Base',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://mainnet.base.org'],
+        blockExplorerUrls: ['https://basescan.org']
+      }
+    }
+
+    const config = chainConfigs[chainId]
+    if (!config) {
+      throw new Error(`Chain configuration not found for chain ID ${chainId}`)
+    }
+
+    await window.ethereum?.request({
+      method: 'wallet_addEthereumChain',
+      params: [config],
+    })
+
+    // Update the selected network in UI
+    const targetNetwork = networks.find(n => n.chainId === chainId)
+    if (targetNetwork) {
+      setSelectedNetwork(targetNetwork.name)
+    }
+
+    toast({
+      title: 'Network Added',
+      description: `Successfully added ${targetNetwork?.name} to MetaMask`,
+    })
+  }
+
   const getExplorerUrl = () => {
     if (!wallet.address || !wallet.chainId) return null
     
     const explorers: Record<number, string> = {
       1: 'https://etherscan.io/address/',
       10: 'https://optimistic.etherscan.io/address/',
+      11155420: 'https://sepolia-optimism.etherscan.io/address/',
       137: 'https://polygonscan.com/address/',
       42161: 'https://arbiscan.io/address/',
       8453: 'https://basescan.io/address/',
@@ -179,6 +330,7 @@ export function Header() {
     const chains: Record<number, string> = {
       1: 'Ethereum',
       10: 'Optimism',
+      11155420: 'OP Sepolia',
       137: 'Polygon',
       42161: 'Arbitrum',
       8453: 'Base',
@@ -219,9 +371,9 @@ export function Header() {
                 {networks.map((network) => (
                   <button
                     key={network.name}
-                    onClick={() => {
-                      setSelectedNetwork(network.name)
+                    onClick={async () => {
                       setIsDropdownOpen(false)
+                      await switchChain(network.chainId)
                     }}
                     className={cn(
                       "w-full px-4 py-3 text-left text-white hover:bg-white/5 transition-all duration-300 flex items-center gap-3",
