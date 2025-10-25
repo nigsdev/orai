@@ -142,11 +142,40 @@ export default function PaymentsPage() {
 
   const { address, isConnected, chain } = useAccount()
   const chainId = useChainId()
-  const { data: balance } = useBalance({ address })
   const { executeBridge, isReady } = useAvailNexus()
 
   // Get the actual chain ID (fallback to chain.id if useChainId() doesn't work)
   const [manualChainId, setManualChainId] = useState<number | null>(null)
+  
+  // Get balance from the correct chain (use manualChainId if available)
+  const actualChainId = manualChainId || chainId || chain?.id || 1
+  const { data: balance } = useBalance({ 
+    address,
+    chainId: actualChainId
+  })
+  
+  // Fallback: Direct balance fetch for the current chain
+  const [directBalance, setDirectBalance] = useState<any>(null)
+  
+  useEffect(() => {
+    const fetchDirectBalance = async () => {
+      if (address && window.ethereum) {
+        try {
+          const balance = await window.ethereum.request({
+            method: 'eth_getBalance',
+            params: [address, 'latest']
+          })
+          const balanceInEth = parseInt(balance, 16) / 1e18
+          setDirectBalance({ value: balance, formatted: balanceInEth })
+          console.log('💰 Direct balance fetch:', balanceInEth, 'ETH on chain', actualChainId)
+        } catch (error) {
+          console.error('Failed to fetch direct balance:', error)
+        }
+      }
+    }
+    
+    fetchDirectBalance()
+  }, [address, actualChainId])
   
   // Get chain ID directly from wallet as fallback
   useEffect(() => {
@@ -187,7 +216,7 @@ export default function PaymentsPage() {
   }, [])
 
   // Prioritize manual chain ID detection over Wagmi hooks
-  const actualChainId = manualChainId || chainId || chain?.id || 1
+  // actualChainId is already defined above
 
   // Debug chain information
   console.log('🔍 Chain Debug Info:', {
@@ -207,6 +236,11 @@ export default function PaymentsPage() {
         const numericChainId = parseInt(chainId, 16)
         console.log('🔄 Chain changed to:', numericChainId)
         setManualChainId(numericChainId)
+        
+        // Show warning if chain switched during transaction
+        if (loading) {
+          console.warn('⚠️ Chain switched during transaction! This might cause issues.');
+        }
       }
 
       window.ethereum.on('chainChanged', handleChainChanged)
@@ -215,7 +249,7 @@ export default function PaymentsPage() {
         window.ethereum?.removeListener('chainChanged', handleChainChanged)
       }
     }
-  }, [])
+  }, [loading])
 
   // Fetch real wallet data from multiple chains (like Analytics page)
   useEffect(() => {
@@ -301,12 +335,28 @@ export default function PaymentsPage() {
     try {
       setLoading(true)
       
+      // LOCK the source chain ID BEFORE any SDK calls to prevent automatic switching
+      let sourceChainId: number;
+      if (window.ethereum) {
+        try {
+          const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+          sourceChainId = parseInt(chainIdHex, 16);
+          console.log('🔒 LOCKED source chain ID:', sourceChainId);
+        } catch (e) {
+          console.error('Failed to get source chainId:', e);
+          throw new Error('Failed to detect current chain. Please try again.');
+        }
+      } else {
+        sourceChainId = actualChainId || 1;
+        console.log('🔒 Using fallback source chain ID:', sourceChainId);
+      }
+      
       // Get target chain ID from selected chain
       const targetChainId = networks.find(n => n.name === selectedChain)?.chainId || 1
       
-      // Create cross-chain intent
+      // Create cross-chain intent with LOCKED source chain
       const intent = {
-        chainFrom: actualChainId || 1,
+        chainFrom: sourceChainId, // Use locked source chain ID
         chainTo: targetChainId,
         token: selectedToken,
         amount: amount,
@@ -314,11 +364,29 @@ export default function PaymentsPage() {
         recipientAddress: recipient
       }
 
-      console.log('Executing payment with intent:', intent)
+      console.log('🚀 Executing payment with LOCKED intent:', intent)
+      console.log('📌 Source chain locked to:', sourceChainId);
+      console.log('🎯 Destination chain:', targetChainId);
       
       // Validate that we're doing a cross-chain transfer
       if (intent.chainFrom === intent.chainTo) {
         throw new Error('Please select a different target chain for cross-chain transfer')
+      }
+      
+      // Check wallet balance before attempting bridge
+      const currentBalance = directBalance ? directBalance.formatted : (balance?.value ? Number(balance.value) / 1e18 : 0)
+      const amountToSend = Number(amount)
+      
+      console.log('Balance check:', { 
+        wagmiBalance: balance?.value ? Number(balance.value) / 1e18 : 0,
+        directBalance: directBalance?.formatted || 0,
+        currentBalance, 
+        amountToSend, 
+        hasEnough: currentBalance >= amountToSend 
+      })
+      
+      if (currentBalance < amountToSend) {
+        throw new Error(`Insufficient balance. You have ${currentBalance.toFixed(6)} ETH but trying to send ${amountToSend} ETH`)
       }
       
       // Execute bridge operation
@@ -326,12 +394,20 @@ export default function PaymentsPage() {
       
       console.log('Payment result:', result)
       
-      // Validate transaction hash is real (starts with 0x and is 66 characters)
-      if (!result.transactionHash || !result.transactionHash.startsWith('0x') || result.transactionHash.length !== 66) {
-        throw new Error('Invalid transaction hash received')
+      // Handle different response types from Avail SDK
+      if (result.transactionHash) {
+        // Traditional transaction hash response
+        if (!result.transactionHash.startsWith('0x') || result.transactionHash.length !== 66) {
+          throw new Error('Invalid transaction hash format')
+        }
+        alert(`Payment successful! Transaction: ${result.transactionHash}`)
+      } else if (result.bridgeId || result.messageId) {
+        // Message-first response (common with Avail)
+        const id = result.bridgeId || result.messageId
+        alert(`Payment submitted! Bridge ID: ${id}. The transaction will be processed by the Avail network.`)
+      } else {
+        throw new Error('No transaction hash or bridge ID received from Avail SDK')
       }
-      
-      alert(`Payment successful! Transaction: ${result.transactionHash}`)
       
       // Refresh wallet data
       window.location.reload()
@@ -418,6 +494,50 @@ export default function PaymentsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 overflow-visible">
+              {/* Balance Display */}
+              {isConnected && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
+                  <div className="text-sm text-blue-400 font-medium">
+                    💰 Current Balance: {directBalance ? directBalance.formatted.toFixed(6) : balance ? (Number(balance.value) / 1e18).toFixed(6) : '0.000000'} ETH
+                    <span className="text-xs text-gray-400 ml-2">
+                      (Chain {actualChainId === 10 ? 'OP Mainnet' : actualChainId === 1 ? 'Ethereum' : actualChainId === 11155420 ? 'OP Sepolia' : actualChainId === 421614 ? 'Arbitrum Sepolia' : actualChainId})
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Make sure you have enough ETH to cover the amount + gas fees
+                  </div>
+                  {actualChainId === 421614 && (
+                    <div className="text-xs text-yellow-400 mt-1 flex items-center gap-2">
+                      ⚠️ You're on Arbitrum Sepolia. Switch to OP Sepolia to use your OP Sepolia balance.
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={async () => {
+                          try {
+                            if (window.ethereum) {
+                              await window.ethereum.request({
+                                method: 'wallet_switchEthereumChain',
+                                params: [{ chainId: '0xaa36a7' }], // OP Sepolia chain ID
+                              })
+                            }
+                          } catch (error) {
+                            console.error('Failed to switch to OP Sepolia:', error)
+                          }
+                        }}
+                        className="text-xs h-6 px-2"
+                      >
+                        Switch to OP Sepolia
+                      </Button>
+                    </div>
+                  )}
+                  {actualChainId === 11155420 && selectedChain === 'Arbitrum Sepolia' && (
+                    <div className="text-xs text-green-400 mt-1">
+                      ✅ Perfect! You're on OP Sepolia and sending to Arbitrum Sepolia. This should work.
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-2 block">
                   Recipient Address

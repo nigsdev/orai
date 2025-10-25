@@ -23,6 +23,7 @@ import {
   AvailEventType,
   CrossChainIntent
 } from '@/types/avail'
+import { parseEther, zeroAddress } from 'viem'
 
 // Global SDK instance
 let sdkInstance: NexusSDK | null = null
@@ -65,8 +66,7 @@ export function initializeAvailNexus(provider?: any): NexusSDK {
       // no await here; we just best-effort adjust before constructing SDK below
       // but to keep ordering deterministic, we will await
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      // @ts-expect-error - we intentionally handle both promise and non-promise
-      setFromChainId(maybePromise)
+      void setFromChainId(maybePromise)
     } catch (e) {
       // If detection fails, fall back to env configuration
       console.warn('Avail SDK: failed to detect chainId for network selection; using env configuration')
@@ -110,31 +110,104 @@ export async function executeCrossChainIntent(intent: CrossChainIntent): Promise
 
     console.log('Executing cross-chain intent:', intent)
     
-    // Execute bridge operation with proper SDK types
-    const result = await sdk.bridge({
-      token: intent.token as any, // SDK will handle token validation
-      amount: intent.amount,
-      chainId: intent.chainTo as any, // SDK will handle chain validation
-      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
-    })
-    
-    // Handle SDK response format - only return real transaction data
-    if (!(result as any)?.transactionHash) {
-      throw new Error('No transaction hash returned from Avail SDK')
+    // PREVENT CHAIN SWITCHING: Store the original chain ID
+    let originalChainId: string | null = null;
+    if (window.ethereum) {
+      try {
+        originalChainId = await window.ethereum.request({ method: 'eth_chainId' });
+        console.log('🔒 Original chain ID before bridge:', originalChainId);
+      } catch (e) {
+        console.warn('Could not get original chain ID:', e);
+      }
     }
     
-    const bridgeResult: BridgeResult = {
-      transactionHash: (result as any).transactionHash,
-      bridgeId: (result as any)?.bridgeId || `bridge_${Date.now()}`,
-      estimatedTime: (result as any)?.estimatedTime || '2-5 minutes',
-      gasCost: (result as any)?.gasCost || '$0.35',
-      status: (result as any)?.status || 'success',
+    // For Avail SDK, use token symbols, not contract addresses
+    // The SDK expects 'ETH', 'WETH', 'USDC', etc. as strings
+    let tokenSymbol = intent.token
+    
+    // Convert common variations to SDK-expected symbols
+    if (intent.token.toUpperCase() === 'ETH' || intent.token.toUpperCase() === 'WETH') {
+      tokenSymbol = 'ETH' // Use ETH for native token bridging
+    } else if (intent.token.toUpperCase() === 'USDC') {
+      tokenSymbol = 'USDC'
+    } else if (intent.token.toUpperCase() === 'USDT') {
+      tokenSymbol = 'USDT'
     }
     
-    return bridgeResult
+    console.log('Using token symbol for SDK:', tokenSymbol)
+
+    if (!intent.recipientAddress || intent.recipientAddress === zeroAddress) {
+      throw new Error('Invalid recipient address')
+    }
+
+    const amountWei = parseEther(String(intent.amount)).toString()
+
+    // Try fee quote; pass non-zero fee if returned
+    let bridgeFee: string | undefined
+    try {
+      const quote = await (sdk as any).simulateBridge?.({
+        token: tokenSymbol as any,
+        amount: amountWei as any,
+        chainId: intent.chainTo as any,
+        toAddress: intent.recipientAddress as any,
+      } as any)
+      bridgeFee = (quote as any)?.bridgeFeeWei || (quote as any)?.bridgeFee
+      console.log('simulateBridge quote:', quote)
+    } catch (e) {
+      console.warn('simulateBridge unavailable or failed:', e)
+      
+      // Check if it's an insufficient balance error
+      if (e instanceof Error && e.message.includes('Insufficient balance')) {
+        throw new Error('Insufficient balance for bridge transaction. Please ensure you have enough ETH to cover the amount plus gas fees.')
+      }
+      
+      // Re-throw other errors that might be important
+      if (e instanceof Error && (e.message.includes('Token not supported') || e.message.includes('Invalid'))) {
+        throw e
+      }
+    }
+
+    // Execute bridge
+    const bridgeParams: any = {
+      token: tokenSymbol as any,
+      amount: amountWei as any,
+      chainId: intent.chainTo as any,
+      toAddress: intent.recipientAddress as any,
+      ...(bridgeFee ? { bridgeFee } : {}),
+    }
+    const result = await (sdk as any).bridge(bridgeParams as any)
+    
+    // Accept message-first response; don't fabricate values
+    const out: BridgeResult = {
+      transactionHash: (result as any)?.transactionHash,
+      bridgeId: (result as any)?.bridgeId || (result as any)?.messageId,
+      estimatedTime: (result as any)?.estimatedTime,
+      gasCost: (result as any)?.gasCost,
+      status: (result as any)?.status || ((result as any)?.transactionHash ? 'pending' : 'submitted'),
+    }
+    
+    // RESTORE ORIGINAL CHAIN: Switch back to source chain if it was changed
+    if (originalChainId && window.ethereum) {
+      try {
+        const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+        if (currentChainId !== originalChainId) {
+          console.log('🔄 Chain was switched during bridge. Restoring to:', originalChainId);
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: originalChainId }],
+          });
+          console.log('✅ Chain restored to original');
+        }
+      } catch (e) {
+        console.warn('Could not restore original chain:', e);
+      }
+    }
+    
+    return out
   } catch (error) {
-    console.error('Error executing cross-chain intent:', error)
-    throw new Error('Failed to execute cross-chain transaction')
+    const message = error instanceof Error ? error.message : 'Failed to execute cross-chain transaction'
+    console.error('Error executing cross-chain intent:', message)
+    throw new Error(message)
   }
 }
 
