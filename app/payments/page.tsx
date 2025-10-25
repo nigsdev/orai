@@ -29,6 +29,7 @@ const networks = [
   { name: "OP Sepolia", symbol: "ETH", chainId: 11155420 },
   { name: "Polygon", symbol: "MATIC", chainId: 137 },
   { name: "Arbitrum", symbol: "ARB", chainId: 42161 },
+  { name: "Arbitrum Sepolia", symbol: "ETH", chainId: 421614 },
   { name: "Base", symbol: "BASE", chainId: 8453 },
 ]
 
@@ -300,10 +301,13 @@ export default function PaymentsPage() {
     try {
       setLoading(true)
       
+      // Get target chain ID from selected chain
+      const targetChainId = networks.find(n => n.name === selectedChain)?.chainId || 1
+      
       // Create cross-chain intent
       const intent = {
         chainFrom: actualChainId || 1,
-        chainTo: actualChainId || 1, // Same chain for now
+        chainTo: targetChainId,
         token: selectedToken,
         amount: amount,
         walletAddress: address!,
@@ -312,10 +316,21 @@ export default function PaymentsPage() {
 
       console.log('Executing payment with intent:', intent)
       
+      // Validate that we're doing a cross-chain transfer
+      if (intent.chainFrom === intent.chainTo) {
+        throw new Error('Please select a different target chain for cross-chain transfer')
+      }
+      
       // Execute bridge operation
       const result = await executeBridge(intent)
       
       console.log('Payment result:', result)
+      
+      // Validate transaction hash is real (starts with 0x and is 66 characters)
+      if (!result.transactionHash || !result.transactionHash.startsWith('0x') || result.transactionHash.length !== 66) {
+        throw new Error('Invalid transaction hash received')
+      }
+      
       alert(`Payment successful! Transaction: ${result.transactionHash}`)
       
       // Refresh wallet data

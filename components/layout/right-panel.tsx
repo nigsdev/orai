@@ -27,6 +27,41 @@ export function RightPanel() {
   const chainId = useChainId()
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [manualChainId, setManualChainId] = useState<number | null>(null)
+
+  // Robust chain detection (poll + event listener)
+  useEffect(() => {
+    const getChainIdFromWallet = async () => {
+      if (typeof window !== 'undefined' && (window as any).ethereum && isConnected) {
+        try {
+          const hexId = await (window as any).ethereum.request({ method: 'eth_chainId' })
+          const numericChainId = parseInt(hexId, 16)
+          setManualChainId(numericChainId)
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    getChainIdFromWallet()
+    const interval = setInterval(getChainIdFromWallet, 2000)
+    return () => clearInterval(interval)
+  }, [isConnected])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).ethereum) {
+      const handleChainChanged = (hexId: string) => {
+        const numericChainId = parseInt(hexId, 16)
+        setManualChainId(numericChainId)
+      }
+      ;(window as any).ethereum.on('chainChanged', handleChainChanged)
+      return () => {
+        (window as any).ethereum?.removeListener('chainChanged', handleChainChanged)
+      }
+    }
+  }, [])
+
+  const actualChainId = manualChainId || chainId || chain?.id || 1
 
   // Fetch wallet analytics when wallet is connected
   useEffect(() => {
@@ -34,8 +69,8 @@ export function RightPanel() {
       if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching right panel analytics for wallet:', address)
-          const data = await getWalletAnalytics(address, chainId || 1)
+          console.log('Fetching right panel analytics for wallet:', address, 'on chain:', actualChainId)
+          const data = await getWalletAnalytics(address, actualChainId)
           setAnalytics(data)
           console.log('Right panel analytics data received:', data)
         } catch (error) {
@@ -49,7 +84,7 @@ export function RightPanel() {
     }
 
     fetchAnalytics()
-  }, [isConnected, address, chainId])
+  }, [isConnected, address, actualChainId])
 
   // Generate transaction volume data from real transactions or use mock data
   const transactionData = analytics?.recentTransactions?.length > 0 ? 

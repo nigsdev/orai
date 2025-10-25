@@ -27,6 +27,7 @@ export function Header() {
     { name: "OP Sepolia", symbol: "ETH", chainId: 11155420 },
     { name: "Polygon", symbol: "MATIC", chainId: 137 },
     { name: "Arbitrum", symbol: "ARB", chainId: 42161 },
+    { name: "Arbitrum Sepolia", symbol: "ETH", chainId: 421614 },
     { name: "Base", symbol: "BASE", chainId: 8453 },
   ]
 
@@ -279,6 +280,13 @@ export function Header() {
         nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
         rpcUrls: ['https://arb1.arbitrum.io/rpc'],
         blockExplorerUrls: ['https://arbiscan.io']
+      },
+      421614: {
+        chainId: '0x66eee',
+        chainName: 'Arbitrum Sepolia',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://sepolia-rollup.arbitrum.io/rpc'],
+        blockExplorerUrls: ['https://sepolia.arbiscan.io']
       },
       8453: {
         chainId: '0x2105',
