@@ -23,7 +23,6 @@ import {
   AvailEventType,
   CrossChainIntent
 } from '@/types/avail'
-import { parseEther, zeroAddress } from 'viem'
 
 // Global SDK instance
 let sdkInstance: NexusSDK | null = null
@@ -101,6 +100,8 @@ export function getAvailSDK(): NexusSDK | null {
  * @param intent - The cross-chain operation details
  * @returns Promise<BridgeResult> - Transaction result with hash and status
  */
+// In lib/avail.ts, replace the executeCrossChainIntent function (lines 104-152):
+
 export async function executeCrossChainIntent(intent: CrossChainIntent): Promise<BridgeResult> {
   try {
     const sdk = getAvailSDK()
@@ -109,96 +110,63 @@ export async function executeCrossChainIntent(intent: CrossChainIntent): Promise
     }
 
     console.log('Executing cross-chain intent:', intent)
-    
-    // Execute bridge operation with proper SDK types
-    const result = await sdk.bridge({
-      token: intent.token as any, // SDK will handle token validation
+    console.log('🔍 DEBUG - Intent details:', {
+      chainFrom: intent.chainFrom,
+      chainTo: intent.chainTo,
+      token: intent.token,
       amount: intent.amount,
-      chainId: intent.chainTo as any, // SDK will handle chain validation
-      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
-    }){
+      walletAddress: intent.walletAddress,
+      recipientAddress: intent.recipientAddress,
+      hasRecipient: !!intent.recipientAddress
+    })
+
+    // Choose the correct SDK method based on whether recipient is specified
+    let result: any
     
-    console.log('📋 SDK bridge result:', JSON.stringify(result, null, 2))
-    console.log('🔍 Result type:', typeof result)
-    console.log('🔍 Result keys:', result ? Object.keys(result) : 'null/undefined')
-    
-    // Check if result indicates a failure
-    if (result && typeof result === 'object') {
-      const resultAny = result as any
-      if (resultAny.error || resultAny.failed || resultAny.status === 'failed') {
-        console.error('❌ SDK returned failure status:', result)
-        throw new Error(`SDK bridge failed: ${resultAny.error || resultAny.message || 'Unknown error'}`)
+    if (intent.recipientAddress) {
+      // Use transfer() when recipient address is specified
+      const transferParams = {
+        token: intent.token as any, // Type assertion for SDK compatibility
+        amount: intent.amount,
+        chainId: intent.chainTo as any, // Type assertion for chain ID
+        recipient: intent.recipientAddress as `0x${string}`, // Proper Ethereum address type
       }
       
-      if (resultAny.status === 'pending' || resultAny.status === 'processing') {
-        console.log('⏳ Bridge is processing, this may take a few minutes...')
+      console.log('🔍 DEBUG - Using transfer() with params:', transferParams)
+      result = await sdk.transfer(transferParams)
+    } else {
+      // Use bridge() when sending to self (no recipient specified)
+      const bridgeParams = {
+        token: intent.token as any, // Type assertion for SDK compatibility
+        amount: intent.amount,
+        chainId: intent.chainTo as any, // Type assertion for chain ID
       }
+      
+      console.log('🔍 DEBUG - Using bridge() with params:', bridgeParams)
+      result = await sdk.bridge(bridgeParams)
     }
     
-    // Enhanced transaction hash detection
-    let transactionHash = null
-    if (result) {
-      // Try multiple possible property names for transaction hash
-      const possibleHashKeys = [
-        'transactionHash', 'txHash', 'hash', 'tx', 'transactionId', 
-        'id', 'bridgeId', 'bridgeHash', 'crossChainHash', 'receipt',
-        'txHash', 'transaction', 'result', 'data'
-      ]
-      
-      for (const key of possibleHashKeys) {
-        if ((result as any)[key] && typeof (result as any)[key] === 'string' && (result as any)[key].startsWith('0x')) {
-          transactionHash = (result as any)[key]
-          console.log(`✅ Found transaction hash in property '${key}':`, transactionHash)
-          break
-        }
-      }
-      
-      // If no hash found, log all properties for debugging
-      if (!transactionHash) {
-        console.log('🔍 All result properties:')
-        Object.keys(result).forEach(key => {
-          console.log(`  ${key}:`, (result as any)[key], `(type: ${typeof (result as any)[key]})`)
-        })
-      }
+    // Handle SDK response format
+    if (!result.success) {
+      throw new Error(result.error || 'Bridge/Transfer operation failed')
     }
     
-    // Handle SDK response format - only return real transaction data
-    if (!transactionHash) {
-      console.error('❌ No transaction hash found in SDK response:', result)
-      console.error('❌ This indicates the SDK bridge call failed or returned unexpected format')
-      throw new Error('No transaction hash returned from Avail SDK - bridge may have failed')
+    if (!result.transactionHash) {
+      throw new Error('No transaction hash returned from Avail SDK')
     }
     
     const bridgeResult: BridgeResult = {
-      transactionHash: transactionHash,
-      bridgeId: (result as any)?.bridgeId || `bridge_${Date.now()}`,
-      estimatedTime: (result as any)?.estimatedTime || '2-5 minutes',
-      gasCost: (result as any)?.gasCost || '$0.35',
-      status: (result as any)?.status || 'success',
+      transactionHash: result.transactionHash,
+      bridgeId: result.transactionHash, // Use transaction hash as bridge ID
+      estimatedTime: '2-5 minutes',
+      gasCost: '$0.35',
+      status: 'success',
     }
     
-    // RESTORE ORIGINAL CHAIN: Switch back to source chain if it was changed
-    if (originalChainId && window.ethereum) {
-      try {
-        const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
-        if (currentChainId !== originalChainId) {
-          console.log('🔄 Chain was switched during bridge. Restoring to:', originalChainId);
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: originalChainId }],
-          });
-          console.log('✅ Chain restored to original');
-        }
-      } catch (e) {
-        console.warn('Could not restore original chain:', e);
-      }
-    }
-    
-    return out
+    return bridgeResult
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to execute cross-chain transaction'
-    console.error('Error executing cross-chain intent:', message)
-    throw new Error(message)
+    console.error('Error executing cross-chain intent:', error)
+    throw new Error(`Failed to execute cross-chain transaction: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 
@@ -265,19 +233,31 @@ export async function estimateBridgeFees(intent: CrossChainIntent): Promise<Brid
       throw new Error('Avail SDK not initialized')
     }
 
-    // Get real fee estimation with proper SDK types
-    const estimate = await sdk.simulateBridge({
-      token: intent.token as any, // SDK will handle token validation
-      amount: intent.amount,
-      chainId: intent.chainTo as any, // SDK will handle chain validation
-      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
-    })
+    // Use the correct simulation method based on whether recipient is specified
+    let estimate: any
+    
+    if (intent.recipientAddress) {
+      // Use simulateTransfer() when recipient address is specified
+      estimate = await sdk.simulateTransfer({
+        token: intent.token as any,
+        amount: intent.amount,
+        chainId: intent.chainTo as any,
+        recipient: intent.recipientAddress as `0x${string}`,
+      })
+    } else {
+      // Use simulateBridge() when sending to self
+      estimate = await sdk.simulateBridge({
+        token: intent.token as any,
+        amount: intent.amount,
+        chainId: intent.chainTo as any,
+      })
+    }
     
     return {
-      bridgeFee: (estimate as any)?.bridgeFee || '0.1%',
-      gasFee: (estimate as any)?.gasFee || '$0.35',
-      estimatedTime: (estimate as any)?.estimatedTime || '2-5 minutes',
-      slippage: (estimate as any)?.slippage || '0.5%',
+      bridgeFee: estimate?.bridgeFee || estimate?.intent?.fees || '0.1%',
+      gasFee: estimate?.gasFee || estimate?.totalEstimatedCost || '$0.35',
+      estimatedTime: estimate?.estimatedTime || '2-5 minutes',
+      slippage: estimate?.slippage || '0.5%',
     }
   } catch (error) {
     console.error('Error estimating bridge fees:', error)
@@ -341,59 +321,4 @@ export function setupPaymentEventListeners(
   sdk.nexusEvents.on('BRIDGE_EXECUTE_FAILED', (error: any) => {
     onError(new Error(error.message || 'Bridge operation failed'))
   })
-}
-
-/**
- * Test Avail SDK bridge call with detailed debugging
- */
-export async function testSDKBridgeCall(intent: CrossChainIntent): Promise<{
-  success: boolean;
-  result?: any;
-  error?: string;
-  debugInfo: any;
-}> {
-  try {
-    console.log('🧪 Testing SDK bridge call with intent:', intent)
-    
-    const sdk = getAvailSDK()
-    if (!sdk) {
-      throw new Error('Avail SDK not initialized')
-    }
-    
-    console.log('🔍 SDK instance:', sdk)
-    console.log('🔍 SDK methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(sdk)))
-    
-    // Test the bridge call
-    const result = await sdk.bridge({
-      token: intent.token as any,
-      amount: intent.amount,
-      chainId: intent.chainTo as any,
-      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
-    })
-    
-    console.log('🧪 SDK bridge test result:', result)
-    
-    return {
-      success: true,
-      result,
-      debugInfo: {
-        sdkInitialized: true,
-        resultType: typeof result,
-        resultKeys: result ? Object.keys(result) : [],
-        resultStringified: JSON.stringify(result, null, 2)
-      }
-    }
-  } catch (error) {
-    console.error('🧪 SDK bridge test failed:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      debugInfo: {
-        sdkInitialized: !!getAvailSDK(),
-        errorType: typeof error,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        errorStack: error instanceof Error ? error.stack : undefined
-      }
-    }
-  }
 }
