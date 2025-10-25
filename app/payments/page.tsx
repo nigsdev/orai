@@ -188,16 +188,44 @@ export default function PaymentsPage() {
 
   // Prioritize manual chain ID detection over Wagmi hooks
   const actualChainId = manualChainId || chainId || chain?.id || 1
+  
+  // Get chain name with fallback
+  const getChainName = (chainId: number): string => {
+    const chainNames: Record<number, string> = {
+      1: 'Ethereum',
+      10: 'Optimism',
+      11155420: 'OP Sepolia',
+      11155111: 'Ethereum Sepolia',
+      42161: 'Arbitrum',
+      421614: 'Arbitrum Sepolia',
+      137: 'Polygon',
+      8453: 'Base',
+      84532: 'Base Sepolia',
+      80001: 'Polygon Mumbai'
+    }
+    return chainNames[chainId] || `Chain ${chainId}`
+  }
+  
+  const chainName = getChainName(actualChainId)
+  
+  // Get wagmi chain with fallback
+  const wagmiChain = chain || {
+    id: chainId,
+    name: getChainName(chainId || 1),
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: { default: { http: [''] } },
+    blockExplorers: { default: { name: '', url: '' } }
+  }
 
   // Debug chain information
   console.log('🔍 Chain Debug Info:', {
     wagmiChainId: chainId,
-    wagmiChain: chain,
+    wagmiChain: wagmiChain,
     manualChainId,
     actualChainId,
     isConnected,
     address,
-    chainName: chain?.name
+    chainName: chainName
   })
 
   // Listen for chain changes
@@ -379,6 +407,46 @@ export default function PaymentsPage() {
     }
   }
 
+  // Test SDK bridge call function
+  const testSDKBridge = async () => {
+    if (!address) {
+      alert('Please connect your wallet first')
+      return
+    }
+    
+    try {
+      setLoading(true)
+      
+      const testIntent = {
+        chainFrom: actualChainId || 1,
+        chainTo: 421614, // Arbitrum Sepolia
+        token: 'USDC',
+        amount: '0.001',
+        walletAddress: address,
+        recipientAddress: address
+      }
+      
+      console.log('🧪 Testing SDK bridge call with intent:', testIntent)
+      
+      const { testSDKBridgeCall } = await import('@/lib/avail')
+      const result = await testSDKBridgeCall(testIntent)
+      
+      console.log('🧪 SDK bridge test result:', result)
+      
+      if (result.success) {
+        alert(`SDK bridge test successful! Result: ${JSON.stringify(result.result, null, 2)}`)
+      } else {
+        alert(`SDK bridge test failed: ${result.error}`)
+      }
+      
+    } catch (error) {
+      console.error('SDK bridge test failed:', error)
+      alert(`SDK bridge test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -389,7 +457,7 @@ export default function PaymentsPage() {
           </p>
           <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
             <div className="text-xs md:text-sm text-blue-400">
-              🔗 Current Chain: {actualChainId === 10 ? 'OP Mainnet' : actualChainId === 1 ? 'Ethereum' : `Chain ${actualChainId}`} (ID: {actualChainId})
+              🔗 Current Chain: {chainName} (ID: {actualChainId})
             </div>
             <Button 
               size="sm" 
@@ -404,7 +472,7 @@ export default function PaymentsPage() {
             </Button>
           </div>
           <div className="mt-2 text-xs text-gray-500 hidden sm:block">
-            Debug: Wagmi={chainId} | Manual={manualChainId} | Chain={chain?.name} | Final={actualChainId}
+            Debug: Wagmi={chainId} | Manual={manualChainId} | Chain={chainName} | Final={actualChainId}
           </div>
         </div>
 

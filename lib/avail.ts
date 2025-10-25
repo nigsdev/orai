@@ -116,15 +116,61 @@ export async function executeCrossChainIntent(intent: CrossChainIntent): Promise
       amount: intent.amount,
       chainId: intent.chainTo as any, // SDK will handle chain validation
       ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
-    })
+    }){
+    
+    console.log('📋 SDK bridge result:', JSON.stringify(result, null, 2))
+    console.log('🔍 Result type:', typeof result)
+    console.log('🔍 Result keys:', result ? Object.keys(result) : 'null/undefined')
+    
+    // Check if result indicates a failure
+    if (result && typeof result === 'object') {
+      const resultAny = result as any
+      if (resultAny.error || resultAny.failed || resultAny.status === 'failed') {
+        console.error('❌ SDK returned failure status:', result)
+        throw new Error(`SDK bridge failed: ${resultAny.error || resultAny.message || 'Unknown error'}`)
+      }
+      
+      if (resultAny.status === 'pending' || resultAny.status === 'processing') {
+        console.log('⏳ Bridge is processing, this may take a few minutes...')
+      }
+    }
+    
+    // Enhanced transaction hash detection
+    let transactionHash = null
+    if (result) {
+      // Try multiple possible property names for transaction hash
+      const possibleHashKeys = [
+        'transactionHash', 'txHash', 'hash', 'tx', 'transactionId', 
+        'id', 'bridgeId', 'bridgeHash', 'crossChainHash', 'receipt',
+        'txHash', 'transaction', 'result', 'data'
+      ]
+      
+      for (const key of possibleHashKeys) {
+        if ((result as any)[key] && typeof (result as any)[key] === 'string' && (result as any)[key].startsWith('0x')) {
+          transactionHash = (result as any)[key]
+          console.log(`✅ Found transaction hash in property '${key}':`, transactionHash)
+          break
+        }
+      }
+      
+      // If no hash found, log all properties for debugging
+      if (!transactionHash) {
+        console.log('🔍 All result properties:')
+        Object.keys(result).forEach(key => {
+          console.log(`  ${key}:`, (result as any)[key], `(type: ${typeof (result as any)[key]})`)
+        })
+      }
+    }
     
     // Handle SDK response format - only return real transaction data
-    if (!(result as any)?.transactionHash) {
-      throw new Error('No transaction hash returned from Avail SDK')
+    if (!transactionHash) {
+      console.error('❌ No transaction hash found in SDK response:', result)
+      console.error('❌ This indicates the SDK bridge call failed or returned unexpected format')
+      throw new Error('No transaction hash returned from Avail SDK - bridge may have failed')
     }
     
     const bridgeResult: BridgeResult = {
-      transactionHash: (result as any).transactionHash,
+      transactionHash: transactionHash,
       bridgeId: (result as any)?.bridgeId || `bridge_${Date.now()}`,
       estimatedTime: (result as any)?.estimatedTime || '2-5 minutes',
       gasCost: (result as any)?.gasCost || '$0.35',
@@ -277,4 +323,59 @@ export function setupPaymentEventListeners(
   sdk.nexusEvents.on('BRIDGE_EXECUTE_FAILED', (error: any) => {
     onError(new Error(error.message || 'Bridge operation failed'))
   })
+}
+
+/**
+ * Test Avail SDK bridge call with detailed debugging
+ */
+export async function testSDKBridgeCall(intent: CrossChainIntent): Promise<{
+  success: boolean;
+  result?: any;
+  error?: string;
+  debugInfo: any;
+}> {
+  try {
+    console.log('🧪 Testing SDK bridge call with intent:', intent)
+    
+    const sdk = getAvailSDK()
+    if (!sdk) {
+      throw new Error('Avail SDK not initialized')
+    }
+    
+    console.log('🔍 SDK instance:', sdk)
+    console.log('🔍 SDK methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(sdk)))
+    
+    // Test the bridge call
+    const result = await sdk.bridge({
+      token: intent.token as any,
+      amount: intent.amount,
+      chainId: intent.chainTo as any,
+      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
+    })
+    
+    console.log('🧪 SDK bridge test result:', result)
+    
+    return {
+      success: true,
+      result,
+      debugInfo: {
+        sdkInitialized: true,
+        resultType: typeof result,
+        resultKeys: result ? Object.keys(result) : [],
+        resultStringified: JSON.stringify(result, null, 2)
+      }
+    }
+  } catch (error) {
+    console.error('🧪 SDK bridge test failed:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      debugInfo: {
+        sdkInitialized: !!getAvailSDK(),
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
+      }
+    }
+  }
 }
