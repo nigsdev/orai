@@ -175,6 +175,18 @@
     inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
 }
 
+/* Enhanced dropdown styling */
+.dropdown-card {
+  background: rgba(21, 25, 41, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 20px 40px 0 rgba(0, 0, 0, 0.4),
+    0 8px 32px 0 rgba(31, 38, 135, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
 .glass-sidebar {
   background: rgba(21, 25, 41, 0.8);
   backdrop-filter: blur(20px);
@@ -385,4 +397,112 @@
 .mic-button:hover::before {
   width: 100%;
   height: 100%;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Better mobile scrolling */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile-friendly glass effects */
+  .glass-card {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  /* Mobile header adjustments */
+  .glass-header {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  /* Mobile sidebar improvements */
+  .glass-sidebar {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+/* Prevent zoom on input focus on iOS */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Transaction card mobile improvements */
+@media (max-width: 640px) {
+  .transaction-card {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .transaction-card .flex {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .transaction-card .text-right {
+    align-self: flex-end;
+    margin-top: 0.5rem;
+  }
+}
+
+/* Address truncation for mobile */
+@media (max-width: 640px) {
+  .address-mobile {
+    font-family: monospace;
+    font-size: 0.75rem;
+    word-break: break-all;
+  }
+}
+
+/* Better touch targets for transaction cards */
+.transaction-card {
+  min-height: 60px;
+  touch-action: manipulation;
+}
+
+.transaction-card:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  transition: background-color 0.2s ease;
+}
+
+/* Mobile dropdown improvements */
+@media (max-width: 768px) {
+  .dropdown-card {
+    background: rgba(21, 25, 41, 0.98);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 
+      0 25px 50px 0 rgba(0, 0, 0, 0.5),
+      0 10px 40px 0 rgba(31, 38, 135, 0.4),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* Dropdown animation improvements */
+.dropdown-card {
+  animation: dropdownFadeIn 0.2s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
   Settings, 
-  User, 
   Bell, 
   Shield, 
   Globe, 
@@ -35,58 +34,13 @@ export default function SettingsPage() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-white">Settings</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Settings</h2>
+          <p className="text-sm md:text-base text-gray-400">
             Manage your account preferences and application settings.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Profile Settings */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Profile Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">
-                  Display Name
-                </label>
-                <Input
-                  placeholder="Enter your name"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-400"
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">
-                  Email Address
-                </label>
-                <Input
-                  placeholder="your@email.com"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">
-                  Bio
-                </label>
-                <textarea
-                  placeholder="Tell us about yourself"
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-md text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                />
-              </div>
-
-              <Button className="w-full">
-                Save Profile
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
 
           {/* Wallet Settings */}
           <Card className="glass-card">

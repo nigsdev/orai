@@ -19,13 +19,13 @@ export default function ChatPage() {
         </div>
         
         {/* Chat Interface */}
-        <Card className="h-[calc(100vh-200px)] flex flex-col">
-          <CardHeader className="flex-shrink-0">
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
+        <Card className="h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] flex flex-col">
+          <CardHeader className="flex-shrink-0 p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+              <Bot className="h-4 w-4 md:h-5 md:w-5" />
               AI Assistant
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs md:text-sm text-muted-foreground">
               Ask me to send tokens, check analytics, or execute cross-chain transactions
             </p>
           </CardHeader>
@@ -35,7 +35,7 @@ export default function ChatPage() {
         </Card>
 
         {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           <Card className="glass-card">
             <CardContent className="p-4">
               <motion.div

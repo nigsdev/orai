@@ -88,14 +88,14 @@ export default function ToolsPage() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-white">Tools</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Tools</h2>
+          <p className="text-sm md:text-base text-gray-400">
             Powerful Web3 tools to optimize your blockchain experience.
           </p>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {quickActions.map((action, index) => (
             <Card key={index} className="glass-card p-4 cursor-pointer hover:bg-white/10 transition-colors duration-300" onClick={action.action}>
               <div className="flex items-center gap-3">
@@ -147,7 +147,7 @@ export default function ToolsPage() {
         </Card>
 
         {/* Tool Categories */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

@@ -340,7 +340,7 @@ export function Header() {
 
   return (
     <header className="fixed top-0 right-0 left-0 md:left-64 z-30 glass-header">
-      <div className="container flex h-16 max-w-screen-2xl items-center px-6">
+      <div className="container flex h-16 max-w-screen-2xl items-center px-4 md:px-6">
         <div className="mr-4 hidden md:flex">
           <a className="mr-6 flex items-center space-x-2" href="/">
             <span className="hidden font-bold sm:inline-block text-white">
@@ -350,24 +350,25 @@ export function Header() {
         </div>
         
         {/* Right-aligned items */}
-        <div className="flex flex-1 items-center justify-end space-x-4">
+        <div className="flex flex-1 items-center justify-end space-x-2 md:space-x-4">
           {/* Network Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg floating-glass text-white hover:glow-accent-hover transition-all duration-300"
+              className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-lg floating-glass text-white hover:glow-accent-hover transition-all duration-300"
             >
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span className="font-medium">{selectedNetwork}</span>
+              <span className="font-medium text-sm md:text-base hidden sm:inline">{selectedNetwork}</span>
+              <span className="font-medium text-sm md:text-base sm:hidden">ETH</span>
               <ChevronDown className={cn(
-                "h-4 w-4 transition-transform duration-300",
+                "h-3 w-3 md:h-4 md:w-4 transition-transform duration-300",
                 isDropdownOpen && "rotate-180"
               )} />
             </button>
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 glass-card rounded-xl border border-white/10 shadow-lg overflow-hidden z-50">
+              <div className="dropdown-card absolute right-0 top-full mt-2 w-48 rounded-xl overflow-hidden z-50">
                 {networks.map((network) => (
                   <button
                     key={network.name}
@@ -376,8 +377,8 @@ export function Header() {
                       await switchChain(network.chainId)
                     }}
                     className={cn(
-                      "w-full px-4 py-3 text-left text-white hover:bg-white/5 transition-all duration-300 flex items-center gap-3",
-                      selectedNetwork === network.name && "bg-accent-blue-500/20 text-accent-blue-500"
+                      "w-full px-4 py-3 text-left text-white hover:bg-white/10 transition-all duration-300 flex items-center gap-3",
+                      selectedNetwork === network.name && "bg-accent-blue-500/30 text-accent-blue-500"
                     )}
                   >
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -392,10 +393,10 @@ export function Header() {
           </div>
 
           {/* Notifications Bell */}
-          <button className="relative p-2 rounded-lg floating-glass text-white hover:glow-accent-hover transition-all duration-300">
-            <Bell className="h-5 w-5" />
+          <button className="relative p-1.5 md:p-2 rounded-lg floating-glass text-white hover:glow-accent-hover transition-all duration-300">
+            <Bell className="h-4 w-4 md:h-5 md:w-5" />
             {hasNotifications && (
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 md:w-3 md:h-3 bg-red-500 rounded-full animate-pulse"></div>
             )}
           </button>
 
@@ -404,23 +405,25 @@ export function Header() {
             {!wallet.isConnected ? (
               <button 
                 onClick={connectWallet}
-                className="neon-button group relative px-6 py-2 rounded-lg font-medium text-white transition-all duration-300 overflow-hidden"
+                className="neon-button group relative px-3 md:px-6 py-2 rounded-lg font-medium text-white transition-all duration-300 overflow-hidden"
               >
                 {/* Button content */}
-                <div className="relative flex items-center gap-2 z-10">
-                  <Wallet className="h-4 w-4" />
-                  <span>Connect Wallet</span>
+                <div className="relative flex items-center gap-1 md:gap-2 z-10">
+                  <Wallet className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="text-sm md:text-base hidden sm:inline">Connect Wallet</span>
+                  <span className="text-sm md:text-base sm:hidden">Connect</span>
                 </div>
               </button>
             ) : (
               <button
                 onClick={() => setIsWalletDropdownOpen(!isWalletDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg floating-glass text-white hover:glow-accent-hover transition-all duration-300"
+                className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-lg floating-glass text-white hover:glow-accent-hover transition-all duration-300"
               >
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="font-medium">{formatAddress(wallet.address || '')}</span>
+                <span className="font-medium text-sm md:text-base hidden sm:inline">{formatAddress(wallet.address || '')}</span>
+                <span className="font-medium text-sm md:text-base sm:hidden">{formatAddress(wallet.address || '').slice(0, 6)}</span>
                 <ChevronDown className={cn(
-                  "h-4 w-4 transition-transform duration-300",
+                  "h-3 w-3 md:h-4 md:w-4 transition-transform duration-300",
                   isWalletDropdownOpen && "rotate-180"
                 )} />
               </button>
@@ -428,7 +431,7 @@ export function Header() {
 
             {/* Wallet Dropdown Menu */}
             {isWalletDropdownOpen && wallet.isConnected && (
-              <div className="absolute right-0 top-full mt-2 w-64 glass-card rounded-xl border border-white/10 shadow-lg overflow-hidden z-50">
+              <div className="dropdown-card absolute right-0 top-full mt-2 w-64 rounded-xl overflow-hidden z-50">
                 <div className="p-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
@@ -481,7 +484,9 @@ export function Header() {
           </div>
 
           {/* Theme Toggle */}
-          <ThemeToggle />
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </header>

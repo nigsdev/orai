@@ -77,10 +77,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       transition={{ duration: 0.3 }}
       className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
     >
-      <div className={`max-w-[80%] ${isUser ? 'order-2' : 'order-1'}`}>
+      <div className={`max-w-[85%] sm:max-w-[80%] ${isUser ? 'order-2' : 'order-1'}`}>
         <Card className={`${isUser ? 'bg-primary text-primary-foreground' : 'bg-card'} border-0`}>
-          <CardContent className="p-4">
-            <div className="whitespace-pre-wrap text-sm">
+          <CardContent className="p-3 md:p-4">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed">
               {message.content}
             </div>
             

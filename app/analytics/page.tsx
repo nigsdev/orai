@@ -9,6 +9,7 @@ import { TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react"
 import { useAccount, useChainId } from "wagmi"
 import { useEffect, useState } from "react"
 import { getWalletAnalytics, getTokenBalances } from "@/lib/blockscout"
+import { formatAddressForMobile, formatAddressForDesktop } from "@/lib/utils"
 
 export default function AnalyticsPage() {
   const { address, isConnected, chain } = useAccount()
@@ -135,12 +136,12 @@ export default function AnalyticsPage() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-white">Analytics</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Analytics</h2>
+          <p className="text-sm md:text-base text-gray-400">
             Comprehensive insights into your Web3 portfolio and transaction patterns.
           </p>
           {isConnected && (
-            <div className="mt-2 text-sm text-blue-400">
+            <div className="mt-2 text-xs md:text-sm text-blue-400">
               📊 Connected Wallet: {address} | Loading: {loading ? 'Yes' : 'No'}
             </div>
           )}
@@ -196,7 +197,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Additional Analytics Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>Transaction History</CardTitle>
@@ -210,11 +211,11 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               ) : analytics?.allTransactions?.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {analytics.allTransactions.slice(0, 5).map((tx: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    <div key={index} className="transaction-card flex items-start justify-between p-3 md:p-4 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                      <div className="flex items-start gap-3 min-w-0 flex-1 max-w-[calc(100%-120px)]">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                           tx.from?.toLowerCase() === address?.toLowerCase() ? 'bg-red-500/20' : 'bg-green-500/20'
                         }`}>
                           {tx.from?.toLowerCase() === address?.toLowerCase() ? (
@@ -223,20 +224,31 @@ export default function AnalyticsPage() {
                             <TrendingUp className="w-4 h-4 text-green-400" />
                           )}
                         </div>
-                        <div>
-                          <div className="text-white font-medium">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="text-white font-medium text-sm md:text-base truncate">
                             {tx.from?.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
                           </div>
-                          <div className="text-gray-400 text-sm">
-                            {tx.from?.toLowerCase() === address?.toLowerCase() ? 'To' : 'From'} {tx.from?.toLowerCase() === address?.toLowerCase() ? tx.to : tx.from}
+                          <div className="text-gray-400 text-xs md:text-sm mt-1 overflow-hidden">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="flex-shrink-0">
+                                {tx.from?.toLowerCase() === address?.toLowerCase() ? 'To' : 'From'}
+                              </span>
+                              <span className="font-mono text-xs bg-white/5 px-1 py-1 rounded border border-white/10 truncate min-w-0 max-w-[140px] sm:max-w-[180px]">
+                                {(() => {
+                                  const addressToShow = tx.from?.toLowerCase() === address?.toLowerCase() ? tx.to : tx.from;
+                                  if (!addressToShow) return 'N/A';
+                                  return `${addressToShow.slice(0, 6)}...${addressToShow.slice(-4)}`;
+                                })()}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-xs text-blue-400">
+                          <div className="text-xs text-blue-400 mt-1 truncate">
                             {tx.chain}
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-gray-400 text-sm">
+                      <div className="text-right flex-shrink-0 ml-2 min-w-[100px]">
+                        <div className="text-gray-400 text-xs md:text-sm">
                           {new Date(tx.timestamp).toLocaleTimeString()}
                         </div>
                         <div className={`text-xs ${tx.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>

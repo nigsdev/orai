@@ -10,6 +10,16 @@ export function formatAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
+export function formatAddressForMobile(address: string) {
+  if (!address) return ''
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
+
+export function formatAddressForDesktop(address: string) {
+  if (!address) return ''
+  return address
+}
+
 export function formatAmount(amount: string, decimals: number = 18) {
   const num = parseFloat(amount)
   if (isNaN(num)) return '0'

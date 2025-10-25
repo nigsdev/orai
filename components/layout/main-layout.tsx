@@ -32,12 +32,12 @@ export function MainLayout({ children }: MainLayoutProps) {
           "flex-1 transition-all duration-300 ease-in-out",
           isMobile ? "ml-0" : "ml-64"
         )}>
-          <div className="p-6 pt-24 md:pt-20">
+          <div className="p-4 md:p-6 pt-24 md:pt-20">
             <div className={cn(
-              "flex gap-6 transition-all duration-300",
+              "flex gap-4 md:gap-6 transition-all duration-300",
               isMobile || isTablet ? "flex-col" : "flex-row"
             )}>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 {children}
               </div>
               {!isMobile && <RightPanel />}
