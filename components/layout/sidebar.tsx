@@ -90,7 +90,7 @@ export function Sidebar({ isOpen = false, onToggle }: SidebarProps) {
               className="flex items-center gap-3 font-bold text-white text-xl hover:glow-accent-hover transition-all duration-300" 
               href="/"
             >
-              <img src="/orailogo.png" alt="ORAI Logo" width={100} height={50} />
+              <img src="/images/orailogo.png" alt="ORAI Logo" width={100} height={50} />
             </Link>
           </div>
 
