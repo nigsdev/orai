@@ -30,8 +30,10 @@ export function getChainName(chainId: number) {
   const chains: Record<number, string> = {
     1: 'Ethereum',
     10: 'Optimism',
+    11155420: 'OP Sepolia',
     137: 'Polygon',
     42161: 'Arbitrum',
+    421614: 'Arbitrum Sepolia',
     8453: 'Base',
   }
   return chains[chainId] || `Chain ${chainId}`
@@ -41,8 +43,10 @@ export function getChainIcon(chainId: number) {
   const icons: Record<number, string> = {
     1: '🔷',
     10: '🔴',
+    11155420: '🔴',
     137: '🟣',
     42161: '🔵',
+    421614: '🔵',
     8453: '🔵',
   }
   return icons[chainId] || '⛓️'

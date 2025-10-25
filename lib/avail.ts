@@ -85,9 +85,13 @@ export async function executeCrossChainIntent(intent: CrossChainIntent): Promise
       ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
     })
     
-    // Handle SDK response format
+    // Handle SDK response format - only return real transaction data
+    if (!(result as any)?.transactionHash) {
+      throw new Error('No transaction hash returned from Avail SDK')
+    }
+    
     const bridgeResult: BridgeResult = {
-      transactionHash: (result as any)?.transactionHash || `0x${Math.random().toString(16).substr(2, 64)}`,
+      transactionHash: (result as any).transactionHash,
       bridgeId: (result as any)?.bridgeId || `bridge_${Date.now()}`,
       estimatedTime: (result as any)?.estimatedTime || '2-5 minutes',
       gasCost: (result as any)?.gasCost || '$0.35',
@@ -111,6 +115,7 @@ export function getSupportedChains() {
     { id: 11155420, name: 'OP Sepolia', symbol: 'ETH' },
     { id: 137, name: 'Polygon', symbol: 'MATIC' },
     { id: 42161, name: 'Arbitrum', symbol: 'ETH' },
+    { id: 421614, name: 'Arbitrum Sepolia', symbol: 'ETH' },
     { id: 8453, name: 'Base', symbol: 'ETH' },
   ]
 }
