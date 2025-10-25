@@ -33,11 +33,12 @@ export interface BridgeEstimate {
 }
 
 export interface BridgeResult {
-  transactionHash: string
-  bridgeId: string
-  estimatedTime: string
-  gasCost: string
-  status: 'pending' | 'success' | 'failed'
+  transactionHash?: string
+  bridgeId?: string
+  messageId?: string
+  estimatedTime?: string
+  gasCost?: string
+  status: 'submitted' | 'pending' | 'success' | 'failed'
 }
 
 export interface ProgressStep {

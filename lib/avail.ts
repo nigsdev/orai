@@ -23,6 +23,7 @@ import {
   AvailEventType,
   CrossChainIntent
 } from '@/types/avail'
+import { parseEther, zeroAddress } from 'viem'
 
 // Global SDK instance
 let sdkInstance: NexusSDK | null = null
@@ -65,8 +66,7 @@ export function initializeAvailNexus(provider?: any): NexusSDK {
       // no await here; we just best-effort adjust before constructing SDK below
       // but to keep ordering deterministic, we will await
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      // @ts-expect-error - we intentionally handle both promise and non-promise
-      setFromChainId(maybePromise)
+      void setFromChainId(maybePromise)
     } catch (e) {
       // If detection fails, fall back to env configuration
       console.warn('Avail SDK: failed to detect chainId for network selection; using env configuration')
@@ -177,10 +177,28 @@ export async function executeCrossChainIntent(intent: CrossChainIntent): Promise
       status: (result as any)?.status || 'success',
     }
     
-    return bridgeResult
+    // RESTORE ORIGINAL CHAIN: Switch back to source chain if it was changed
+    if (originalChainId && window.ethereum) {
+      try {
+        const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+        if (currentChainId !== originalChainId) {
+          console.log('🔄 Chain was switched during bridge. Restoring to:', originalChainId);
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: originalChainId }],
+          });
+          console.log('✅ Chain restored to original');
+        }
+      } catch (e) {
+        console.warn('Could not restore original chain:', e);
+      }
+    }
+    
+    return out
   } catch (error) {
-    console.error('Error executing cross-chain intent:', error)
-    throw new Error('Failed to execute cross-chain transaction')
+    const message = error instanceof Error ? error.message : 'Failed to execute cross-chain transaction'
+    console.error('Error executing cross-chain intent:', message)
+    throw new Error(message)
   }
 }
 
