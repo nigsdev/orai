@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit'
-import { mainnet, optimism, polygon, arbitrum, base } from 'wagmi/chains'
+import { mainnet, optimism, polygon, arbitrum, base, sepolia } from 'wagmi/chains'
 import { defineChain } from 'viem'
 import { Toaster } from '@/components/ui/toaster'
 import { http } from 'wagmi'
@@ -11,6 +11,8 @@ import { http } from 'wagmi'
 import '@rainbow-me/rainbowkit/styles.css'
 
 // Define Arbitrum Sepolia chain
+// Arbitrum Sepolia (custom) — wagmi exports arbitrumSepolia in newer versions,
+// but define explicitly to avoid version mismatch
 const arbitrumSepolia = defineChain({
   id: 421614,
   name: 'Arbitrum Sepolia',

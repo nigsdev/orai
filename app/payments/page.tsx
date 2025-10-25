@@ -294,14 +294,7 @@ export default function PaymentsPage() {
     }
 
     if (!isReady) {
-      alert('Avail SDK not ready. Please connect your wallet and ensure you are on a supported chain.')
-      return
-    }
-    
-    // Check if we're on a supported chain for cross-chain operations
-    const supportedChains = [1, 10, 137, 42161, 8453] // Ethereum, Optimism, Polygon, Arbitrum, Base
-    if (!supportedChains.includes(actualChainId || 1)) {
-      alert('Cross-chain operations are not supported on OP Sepolia testnet. Please switch to a supported chain.')
+      alert('Avail SDK not ready. Please connect your wallet.')
       return
     }
 
