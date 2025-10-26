@@ -109,10 +109,14 @@ export function Sidebar({ isOpen = false, onToggle }: SidebarProps) {
                     console.error('❌ Failed to load ORAI logo:', e);
                     // Hide the image and show text fallback
                     e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (fallback) {
+                      fallback.style.display = 'flex';
+                    }
                   }}
                 />
                 {/* Text fallback that shows if image fails */}
-                <div className="text-white font-bold text-xl hidden" style={{ display: 'none' }}>
+                <div className="text-white font-bold text-xl absolute inset-0 flex items-center justify-center" style={{ display: 'none' }}>
                   ORAI
                 </div>
               </div>

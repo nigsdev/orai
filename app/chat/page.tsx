@@ -3,6 +3,7 @@
 import { MainLayout } from "@/components/layout/main-layout"
 import { ChatWindow } from "@/components/ChatWindow"
 import { SimpleWalletCard } from "@/components/SimpleWalletCard"
+import { BlockscoutFeaturesCard } from "@/components/BlockscoutFeaturesCard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bot, Zap, Shield, Globe } from "lucide-react"
 import { motion } from "framer-motion"
@@ -12,9 +13,9 @@ export default function ChatPage() {
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-white">Chat</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-white">Blockchain Analytics Chat</h2>
           <p className="text-gray-400">
-            Ask me anything about your transactions, assets, or DeFi activities.
+            Powered by Blockscout APIs - Analyze wallets, explore transaction history, and get real-time blockchain insights.
           </p>
         </div>
         
@@ -26,13 +27,16 @@ export default function ChatPage() {
               AI Assistant
             </CardTitle>
             <p className="text-xs md:text-sm text-muted-foreground">
-              Ask me to send tokens, check analytics, or execute cross-chain transactions
+              Ask me to analyze wallets, check transaction history, or explore blockchain data
             </p>
           </CardHeader>
           <CardContent className="flex-1 p-0 overflow-hidden">
             <ChatWindow />
           </CardContent>
         </Card>
+
+        {/* Blockscout Features Card */}
+        <BlockscoutFeaturesCard />
 
         {/* Features */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">

@@ -128,16 +128,38 @@ export function ChatWindow() {
 
   const quickActions = [
     {
-      label: 'Send 10 USDC from Ethereum to Polygon',
-      action: () => setInput('Send 10 USDC from Ethereum to Polygon'),
+      label: 'wallet-analytics 0xd8dA...6045',
+      action: () => {
+        setInput('wallet-analytics 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')
+        // Focus the input field after setting the text
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus()
+          }
+        }, 100)
+      },
     },
     {
-      label: 'Show my last 5 transactions on Arbitrum',
-      action: () => setInput('Show my last 5 transactions on Arbitrum'),
+      label: 'transaction-history 0x0D85...FE51',
+      action: () => {
+        setInput('transaction-history 0x0D8546187C10729260854444Cd28aA76EDacFE51')
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus()
+          }
+        }, 100)
+      },
     },
     {
-      label: 'Stake my ETH for yield',
-      action: () => setInput('Stake my ETH for yield'),
+      label: '0x742d...8b6 show last 3',
+      action: () => {
+        setInput('0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6 show last 3 transactions')
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus()
+          }
+        }, 100)
+      },
     },
   ]
 
@@ -174,25 +196,23 @@ export function ChatWindow() {
       </div>
 
       {/* Quick Actions */}
-      {messages.length === 1 && (
-        <div className="px-3 md:px-4 pb-2 flex-shrink-0">
-          <p className="text-xs text-muted-foreground mb-2">Try these examples:</p>
-          <div className="flex flex-wrap gap-1.5 md:gap-2">
-            {quickActions.map((action, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                onClick={action.action}
-                className="text-xs h-7 md:h-8 px-2 md:px-3"
-              >
-                <span className="hidden sm:inline">{action.label}</span>
-                <span className="sm:hidden">{action.label.split(' ')[0]}</span>
-              </Button>
-            ))}
-          </div>
+      <div className="px-3 md:px-4 pb-2 flex-shrink-0">
+        <p className="text-xs text-muted-foreground mb-2">Try these examples:</p>
+        <div className="flex flex-wrap gap-1.5 md:gap-2">
+          {quickActions.map((action, index) => (
+            <Button
+              key={index}
+              variant="outline"
+              size="sm"
+              onClick={action.action}
+              className="text-xs h-7 md:h-8 px-2 md:px-3 hover:bg-slate-800"
+            >
+              <span className="hidden sm:inline">{action.label}</span>
+              <span className="sm:hidden">{action.label.split(' ')[0]}</span>
+            </Button>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Input */}
       <div className="border-t border-border p-3 md:p-4 flex-shrink-0">

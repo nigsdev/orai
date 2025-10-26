@@ -6,6 +6,7 @@ import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { mainnet, optimism, polygon, arbitrum, base, sepolia } from 'wagmi/chains'
 import { defineChain } from 'viem'
 import { Toaster } from '@/components/ui/toaster'
+import { ChatbotBlockscoutProvider } from '@/components/BlockscoutIntegration'
 import { http } from 'wagmi'
 
 import '@rainbow-me/rainbowkit/styles.css'
@@ -49,8 +50,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
-          {children}
-          <Toaster />
+          <ChatbotBlockscoutProvider>
+            {children}
+            <Toaster />
+          </ChatbotBlockscoutProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

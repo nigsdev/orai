@@ -78,6 +78,7 @@ Available actions:
 - stake: Stake tokens for yield
 - swap: Exchange one token for another
 - analytics: Get wallet information and transaction history
+- blockscout: Use Blockscout SDK for wallet analytics, transaction history, and monitoring
 - query: General questions or clarifications
 
         Available chains: Ethereum (1), Polygon (137), Arbitrum (42161), Base (8453)

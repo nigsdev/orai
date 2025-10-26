@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseQueryWithAI } from '@/lib/aiParser'
 import { parseUserIntent, executeHederaOperation, getHederaBalance } from '@/lib/hederaAgent'
-import { getWalletAnalytics } from '@/lib/blockscout'
+import { serverBlockscoutService } from '@/lib/server-blockscout'
 import { executeCrossChainIntent } from '@/lib/avail'
 
 export async function POST(request: NextRequest) {
@@ -13,6 +13,31 @@ export async function POST(request: NextRequest) {
         { error: 'Message is required' },
         { status: 400 }
       )
+    }
+
+    // Check if this is a Blockscout-related query
+    if (isBlockscoutQuery(message)) {
+      try {
+        const blockscoutResponse = await handleBlockscoutQuery(message, walletAddress, chainId)
+        
+        return NextResponse.json({
+          response: blockscoutResponse.message,
+          status: blockscoutResponse.success ? 'success' : 'failed',
+          metadata: {
+            type: 'blockscout_query',
+            data: blockscoutResponse.data,
+            suggestions: blockscoutResponse.suggestions
+          },
+          suggestions: blockscoutResponse.suggestions,
+          warnings: blockscoutResponse.error ? [blockscoutResponse.error] : []
+        })
+      } catch (error) {
+        return NextResponse.json({
+          response: `❌ Failed to process Blockscout query: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          status: 'failed',
+          metadata: { type: 'blockscout_error' }
+        })
+      }
     }
 
     // Parse user intent using Hedera AgentKit
@@ -100,23 +125,23 @@ export async function POST(request: NextRequest) {
         break
 
       case 'analytics':
+      case 'blockscout':
         if (walletAddress) {
           try {
-            const analytics = await getWalletAnalytics(walletAddress, chainId || 1)
-            response = `📊 **Wallet Analytics for ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}**\n\n` +
-              `**Balance:** ${analytics.wallet.balance} ETH\n` +
-              `**Total Transactions:** ${analytics.wallet.transactionCount}\n` +
-              `**Top Tokens:**\n` +
-              analytics.topTokens.map(token => 
-                `• ${token.symbol}: ${token.balance} (${token.value})`
-              ).join('\n') +
-              `\n\n**Recent Activity:**\n` +
-              analytics.recentTransactions.slice(0, 3).map(tx => 
-                `• ${new Date(tx.timestamp).toLocaleDateString()} - ${tx.method || 'transfer'} ${tx.value} ETH`
-              ).join('\n')
+            // Use Blockscout service for comprehensive analytics
+            const analyticsResponse = await serverBlockscoutService.getWalletAnalytics(walletAddress, chainId || 1)
             
-            metadata = {
-              type: 'analytics',
+            if (analyticsResponse.success && analyticsResponse.data) {
+              response = serverBlockscoutService.formatWalletAnalytics(analyticsResponse.data)
+              metadata = {
+                type: 'blockscout_analytics',
+                address: walletAddress,
+                chainId: chainId || 1,
+                analytics: analyticsResponse.data
+              }
+            } else {
+              response = analyticsResponse.message
+              status = 'failed'
             }
           } catch (error) {
             response = `❌ Failed to fetch wallet analytics: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -182,4 +207,102 @@ function getChainName(chainId: number): string {
     8453: 'Base',
   }
   return chains[chainId] || `Chain ${chainId}`
+}
+
+// Helper functions for Blockscout integration
+function isBlockscoutQuery(message: string): boolean {
+  const blockscoutKeywords = [
+    'wallet-analytics', 'transaction-history', 'monitor-transaction',
+    'show-transaction-history', 'supported-chains', 'parse-wallet',
+    'parse-transaction', 'analytics', 'transactions', 'wallet',
+    'address', 'hash', 'explorer', 'blockscout'
+  ]
+  
+  const lowerMessage = message.toLowerCase()
+  return blockscoutKeywords.some(keyword => lowerMessage.includes(keyword))
+}
+
+async function handleBlockscoutQuery(message: string, walletAddress?: string, chainId?: number): Promise<{
+  success: boolean
+  message: string
+  data?: any
+  suggestions?: string[]
+  error?: string
+}> {
+  const lowerMessage = message.toLowerCase()
+  
+  // Extract wallet address from message if not provided
+  const addressMatch = message.match(/0x[a-fA-F0-9]{40}/)
+  const address = addressMatch?.[0] || walletAddress
+  
+  // Extract chain ID from message
+  const chainMatch = message.match(/chain[:\s]*(\d+)/i)
+  const targetChainId = chainMatch ? parseInt(chainMatch[1]) : (chainId || 1)
+  
+  // Handle different query types
+  if (lowerMessage.includes('wallet-analytics') || lowerMessage.includes('analytics')) {
+    if (!address) {
+      return {
+        success: false,
+        message: 'Please provide a wallet address to analyze',
+        suggestions: ['Provide an address like: wallet-analytics 0x1234...5678']
+      }
+    }
+    
+    const result = await serverBlockscoutService.getWalletAnalytics(address, targetChainId as any)
+    if (result.success && result.data) {
+      return {
+        success: true,
+        message: serverBlockscoutService.formatWalletAnalytics(result.data),
+        data: result.data,
+        suggestions: result.suggestions
+      }
+    } else {
+      return result
+    }
+  }
+  
+  if (lowerMessage.includes('transaction-history') || lowerMessage.includes('transactions')) {
+    if (!address) {
+      return {
+        success: false,
+        message: 'Please provide a wallet address to view transactions',
+        suggestions: ['Provide an address like: transaction-history 0x1234...5678']
+      }
+    }
+    
+    const limitMatch = message.match(/last\s+(\d+)/i)
+    const limit = limitMatch ? parseInt(limitMatch[1]) : 5
+    
+    const result = await serverBlockscoutService.getTransactionHistory(address, targetChainId as any, limit)
+    if (result.success && result.data) {
+      return {
+        success: true,
+        message: serverBlockscoutService.formatTransactionHistory(result.data as any[]),
+        data: result.data,
+        suggestions: result.suggestions
+      }
+    } else {
+      return result
+    }
+  }
+  
+  if (lowerMessage.includes('supported-chains')) {
+    return {
+      success: true,
+      message: serverBlockscoutService.getSupportedChainsInfo(),
+      suggestions: ['Use chain ID 1 for Ethereum', 'Use chain ID 137 for Polygon']
+    }
+  }
+  
+  // Default response for Blockscout queries
+  return {
+    success: true,
+    message: `I can help you with wallet analytics and transaction history using Blockscout. Try:\n\n• "wallet-analytics 0x1234...5678" - Get comprehensive wallet analytics\n• "transaction-history 0x1234...5678" - View recent transactions\n• "supported-chains" - See supported networks`,
+    suggestions: [
+      'wallet-analytics <address>',
+      'transaction-history <address>',
+      'supported-chains'
+    ]
+  }
 }
