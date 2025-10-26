@@ -69,12 +69,9 @@ export function RightPanel() {
       if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching right panel analytics for wallet:', address, 'on chain:', actualChainId)
           const data = await getWalletAnalytics(address, actualChainId)
           setAnalytics(data)
-          console.log('Right panel analytics data received:', data)
         } catch (error) {
-          console.error('Error fetching right panel analytics:', error)
         } finally {
           setLoading(false)
         }

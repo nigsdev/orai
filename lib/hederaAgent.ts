@@ -33,7 +33,7 @@ export interface AgentMessage {
 }
 
 export interface TransactionIntent {
-  action: 'transfer' | 'bridge' | 'stake' | 'swap' | 'analytics' | 'query' | 'hedera_operation'
+  action: 'transfer' | 'bridge' | 'stake' | 'swap' | 'analytics' | 'query' | 'hedera_operation' | 'transaction_history' | 'transaction_details' | 'wallet_summary'
   chainFrom?: number
   chainTo?: number
   token?: string
@@ -97,9 +97,6 @@ function createLLM() {
       temperature: 0.3,
     })
   } catch (e) {
-    console.error('No AI provider configured. Please either:')
-    console.error('1. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GROQ_API_KEY in .env')
-    console.error('2. Install and run Ollama locally (https://ollama.com)')
     throw new Error('No AI provider available')
   }
 }
@@ -111,7 +108,6 @@ export function initializeHederaAgent() {
   try {
     // Check for required environment variables
     if (!process.env.HEDERA_ACCOUNT_ID || !process.env.HEDERA_PRIVATE_KEY) {
-      console.warn('Hedera credentials not found. Using mock implementation.')
       return null
     }
 
@@ -186,7 +182,6 @@ Always be helpful, accurate, and provide clear explanations of what you're doing
       returnIntermediateSteps: false,
     })
 
-    console.log('Hedera AgentKit initialized successfully')
     return {
       agentExecutor,
       client,
@@ -195,7 +190,6 @@ Always be helpful, accurate, and provide clear explanations of what you're doing
       model: llm.constructor.name,
     }
   } catch (error) {
-    console.error('Failed to initialize Hedera AgentKit:', error)
     return null
   }
 }
@@ -222,12 +216,10 @@ function getGlobalAgent() {
  */
 export async function parseUserIntent(userQuery: string, walletAddress?: string): Promise<AgentResponse> {
   try {
-    console.log('Parsing user intent with Hedera AgentKit:', userQuery)
     
     const agent = getGlobalAgent()
     
     if (!agent) {
-      console.warn('Hedera AgentKit not available, falling back to mock implementation')
       return parseUserIntentMock(userQuery, walletAddress)
     }
 
@@ -274,7 +266,6 @@ export async function parseUserIntent(userQuery: string, walletAddress?: string)
           }
         }
       } catch (error) {
-        console.error('Hedera AgentKit execution error:', error)
         return {
           intent: {
             action: 'query',
@@ -291,7 +282,6 @@ export async function parseUserIntent(userQuery: string, walletAddress?: string)
       return parseUserIntentMock(userQuery, walletAddress)
     }
   } catch (error) {
-    console.error('Error parsing user intent:', error)
     return {
       intent: {
         action: 'query',
@@ -520,7 +510,6 @@ export async function executeHederaOperation(operation: string, parameters: Reco
       }
     }
   } catch (error) {
-    console.error('Hedera operation execution error:', error)
     return {
       intent: {
         action: 'hedera_operation',
@@ -553,7 +542,6 @@ export async function getHederaBalance(): Promise<string> {
 
     return response.output || 'Unable to fetch balance'
   } catch (error) {
-    console.error('Error fetching Hedera balance:', error)
     return 'Error fetching balance'
   }
 }

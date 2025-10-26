@@ -167,9 +167,7 @@ export default function PaymentsPage() {
           })
           const balanceInEth = parseInt(balance, 16) / 1e18
           setDirectBalance({ value: balance, formatted: balanceInEth })
-          console.log('💰 Direct balance fetch:', balanceInEth, 'ETH on chain', actualChainId)
         } catch (error) {
-          console.error('Failed to fetch direct balance:', error)
         }
       }
     }
@@ -184,10 +182,8 @@ export default function PaymentsPage() {
         try {
           const chainId = await window.ethereum.request({ method: 'eth_chainId' })
           const numericChainId = parseInt(chainId, 16)
-          console.log('🔗 Direct wallet chain ID:', numericChainId)
           setManualChainId(numericChainId)
         } catch (error) {
-          console.error('Error getting chain ID from wallet:', error)
         }
       }
     }
@@ -216,7 +212,7 @@ export default function PaymentsPage() {
   }, [])
 
   // Prioritize manual chain ID detection over Wagmi hooks
-  const actualChainId = manualChainId || chainId || chain?.id || 1
+  // const actualChainId = manualChainId || chainId || chain?.id || 1
   
   // Get chain name with fallback
   const getChainName = (chainId: number): string => {
@@ -247,27 +243,16 @@ export default function PaymentsPage() {
   }
 
   // Debug chain information
-  console.log('🔍 Chain Debug Info:', {
-    wagmiChainId: chainId,
-    wagmiChain: wagmiChain,
-    manualChainId,
-    actualChainId,
-    isConnected,
-    address,
-    chainName: chainName
-  })
 
   // Listen for chain changes
   useEffect(() => {
     if (typeof window !== 'undefined' && window.ethereum) {
       const handleChainChanged = (chainId: string) => {
         const numericChainId = parseInt(chainId, 16)
-        console.log('🔄 Chain changed to:', numericChainId)
         setManualChainId(numericChainId)
         
         // Show warning if chain switched during transaction
         if (loading) {
-          console.warn('⚠️ Chain switched during transaction! This might cause issues.');
         }
       }
 
@@ -285,7 +270,6 @@ export default function PaymentsPage() {
       if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching multi-chain wallet data for payments page:', address)
           
           // Fetch data from Ethereum, OP Mainnet, and OP Sepolia (like Analytics page)
           const [ethereumData, optimismData, opSepoliaData] = await Promise.allSettled([
@@ -298,9 +282,6 @@ export default function PaymentsPage() {
           const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
           const opSepolia = opSepoliaData.status === 'fulfilled' ? opSepoliaData.value : null
 
-          console.log('📊 Ethereum data for payments:', ethereum)
-          console.log('📊 OP Mainnet data for payments:', optimism)
-          console.log('📊 OP Sepolia data for payments:', opSepolia)
 
           // Combine transactions from all chains
           const allTransactions = [
@@ -329,11 +310,9 @@ export default function PaymentsPage() {
             const unified = await getUnifiedBalances()
             setUnifiedBalances(unified)
           } catch (error) {
-            console.log('Unified balances not available, using regular balances')
           }
           
         } catch (error) {
-          console.error('Error fetching multi-chain wallet data:', error)
           // Fallback to empty data
           setRecentTransactions([])
           setTokens([])
@@ -369,14 +348,11 @@ export default function PaymentsPage() {
         try {
           const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
           sourceChainId = parseInt(chainIdHex, 16);
-          console.log('🔒 LOCKED source chain ID:', sourceChainId);
         } catch (e) {
-          console.error('Failed to get source chainId:', e);
           throw new Error('Failed to detect current chain. Please try again.');
         }
       } else {
         sourceChainId = actualChainId || 1;
-        console.log('🔒 Using fallback source chain ID:', sourceChainId);
       }
       
       // Get target chain ID from selected chain
@@ -392,9 +368,6 @@ export default function PaymentsPage() {
         recipientAddress: recipient
       }
 
-      console.log('🚀 Executing payment with LOCKED intent:', intent)
-      console.log('📌 Source chain locked to:', sourceChainId);
-      console.log('🎯 Destination chain:', targetChainId);
       
       // Validate that we're doing a cross-chain transfer
       if (intent.chainFrom === intent.chainTo) {
@@ -405,13 +378,6 @@ export default function PaymentsPage() {
       const currentBalance = directBalance ? directBalance.formatted : (balance?.value ? Number(balance.value) / 1e18 : 0)
       const amountToSend = Number(amount)
       
-      console.log('Balance check:', { 
-        wagmiBalance: balance?.value ? Number(balance.value) / 1e18 : 0,
-        directBalance: directBalance?.formatted || 0,
-        currentBalance, 
-        amountToSend, 
-        hasEnough: currentBalance >= amountToSend 
-      })
       
       if (currentBalance < amountToSend) {
         throw new Error(`Insufficient balance. You have ${currentBalance.toFixed(6)} ETH but trying to send ${amountToSend} ETH`)
@@ -420,7 +386,6 @@ export default function PaymentsPage() {
       // Execute bridge operation
       const result = await executeBridge(intent)
       
-      console.log('Payment result:', result)
       
       // Handle different response types from Avail SDK
       if (result.transactionHash) {
@@ -441,7 +406,6 @@ export default function PaymentsPage() {
       window.location.reload()
       
     } catch (error) {
-      console.error('Payment failed:', error)
       alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
@@ -468,15 +432,12 @@ export default function PaymentsPage() {
         recipientAddress: address // Send to self for testing
       }
 
-      console.log('Testing cross-chain payment:', testIntent)
       
       const result = await executeBridge(testIntent)
       
-      console.log('Cross-chain test result:', result)
       alert(`Cross-chain test successful! Bridge ID: ${result.bridgeId}`)
       
     } catch (error) {
-      console.error('Cross-chain test failed:', error)
       alert(`Cross-chain test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
@@ -502,12 +463,10 @@ export default function PaymentsPage() {
         recipientAddress: address
       }
       
-      console.log('🧪 Testing SDK bridge call with intent:', testIntent)
       
       const { testSDKBridgeCall } = await import('@/lib/avail')
       const result = await testSDKBridgeCall(testIntent)
       
-      console.log('🧪 SDK bridge test result:', result)
       
       if (result.success) {
         alert(`SDK bridge test successful! Result: ${JSON.stringify(result.result, null, 2)}`)
@@ -516,7 +475,6 @@ export default function PaymentsPage() {
       }
       
     } catch (error) {
-      console.error('SDK bridge test failed:', error)
       alert(`SDK bridge test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
@@ -539,7 +497,6 @@ export default function PaymentsPage() {
               size="sm" 
               variant="outline" 
               onClick={() => {
-                console.log('🔄 Manual refresh triggered')
                 window.location.reload()
               }}
               className="text-xs"
@@ -589,7 +546,6 @@ export default function PaymentsPage() {
                               })
                             }
                           } catch (error) {
-                            console.error('Failed to switch to OP Sepolia:', error)
                           }
                         }}
                         className="text-xs h-6 px-2"

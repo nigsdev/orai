@@ -66,7 +66,6 @@ export function SimpleWalletCard() {
         })
       }
     } catch (error: any) {
-      console.error('Connection error:', error)
       toast({
         title: 'Connection Failed',
         description: error.message || 'Failed to connect wallet',

@@ -118,14 +118,12 @@ export function Header() {
         return
       }
 
-      console.log('Attempting to connect to MetaMask...')
 
       // Request account access
       const accounts = await window.ethereum?.request({
         method: 'eth_requestAccounts',
       })
 
-      console.log('Accounts received:', accounts)
 
       if (accounts && accounts.length > 0) {
         const address = accounts[0]
@@ -133,7 +131,6 @@ export function Header() {
         // Get chain ID
         const chainId = await window.ethereum?.request({ method: 'eth_chainId' })
         
-        console.log('Chain ID:', chainId)
         
         setWallet({
           address,
@@ -147,7 +144,6 @@ export function Header() {
         })
       }
     } catch (error) {
-      console.error('MetaMask connection error:', error)
       toast({
         title: 'Connection Failed',
         description: `Failed to connect to MetaMask: ${error instanceof Error ? error.message : 'Please try again.'}`,
@@ -226,7 +222,6 @@ export function Header() {
         try {
           await addChainToMetaMask(targetChainId)
         } catch (addError) {
-          console.error('Error adding chain:', addError)
           toast({
             title: 'Failed to Add Network',
             description: `Could not add ${networks.find(n => n.chainId === targetChainId)?.name} to MetaMask.`,
@@ -234,7 +229,6 @@ export function Header() {
           })
         }
       } else {
-        console.error('Error switching chain:', error)
         toast({
           title: 'Failed to Switch Network',
           description: `Could not switch to ${networks.find(n => n.chainId === targetChainId)?.name}.`,

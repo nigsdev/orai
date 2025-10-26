@@ -29,7 +29,6 @@ export default function AnalyticsPage() {
       if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('🔄 Fetching multi-chain analytics for wallet:', address)
           
           // Fetch data from Ethereum, OP Mainnet, and OP Sepolia
           const [ethereumData, optimismData, opSepoliaData] = await Promise.allSettled([
@@ -42,9 +41,6 @@ export default function AnalyticsPage() {
           const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
           const opSepolia = opSepoliaData.status === 'fulfilled' ? opSepoliaData.value : null
 
-          console.log('📊 Ethereum data:', ethereum)
-          console.log('📊 OP Mainnet data:', optimism)
-          console.log('📊 OP Sepolia data:', opSepolia)
 
           // Combine the data
           const combined = {
@@ -65,9 +61,7 @@ export default function AnalyticsPage() {
           setMultiChainData({ ethereum, optimism, opSepolia, combined })
           setAnalytics(combined)
           
-          console.log('✅ Combined analytics data:', combined)
         } catch (error) {
-          console.error('❌ Error fetching multi-chain analytics:', error)
         } finally {
           setLoading(false)
         }

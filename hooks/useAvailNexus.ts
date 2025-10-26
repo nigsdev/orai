@@ -44,9 +44,7 @@ export function useAvailNexus() {
         const sdkInstance = initializeAvailNexus(window.ethereum)
         setSdk(sdkInstance)
         setIsInitialized(true)
-        console.log('Avail SDK initialized with wallet:', address)
       } catch (error) {
-        console.error('Failed to initialize Avail SDK:', error)
         setPaymentState(prev => ({
           ...prev,
           error: 'Failed to initialize Avail SDK'
@@ -99,7 +97,6 @@ export function useAvailNexus() {
     try {
       return await estimateBridgeFees(intent)
     } catch (error) {
-      console.error('Failed to estimate fees:', error)
       throw error
     }
   }, [sdk])
@@ -157,7 +154,6 @@ export function useAvailNexus() {
     try {
       return await sdk.getUnifiedBalances()
     } catch (error) {
-      console.error('Failed to get balances:', error)
       throw error
     }
   }, [sdk])

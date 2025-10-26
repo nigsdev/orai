@@ -84,7 +84,6 @@ export function initializeBlockscoutMCP() {
   // })
   // return mcp
   
-  console.log('Blockscout MCP initialized (mock)')
   return {
     isConnected: true,
     version: '1.0.0',
@@ -101,7 +100,6 @@ export function initializeBlockscoutMCP() {
  */
 export async function getWalletAnalytics(address: string, chainId: number = 1): Promise<AnalyticsData> {
   try {
-    console.log('Fetching REAL wallet analytics for:', address, 'on chain:', chainId)
     
     // Check if chain is supported by Blockscout
     if (!isChainSupported(chainId)) {
@@ -175,8 +173,6 @@ export async function getWalletAnalytics(address: string, chainId: number = 1): 
     
     return realAnalytics
   } catch (error) {
-    console.error('Error fetching wallet analytics:', error)
-    console.log('Falling back to mock data for demo purposes')
     
     // Fallback to mock data if real API fails
     return {
@@ -211,7 +207,6 @@ export async function getRecentTransactions(
   limit: number = 5
 ): Promise<Transaction[]> {
   try {
-    console.log('Fetching REAL recent transactions for:', address)
     
     // Check if chain is supported by Blockscout
     if (!isChainSupported(chainId)) {
@@ -241,8 +236,6 @@ export async function getRecentTransactions(
     
     return transactions
   } catch (error) {
-    console.error('Error fetching recent transactions:', error)
-    console.log('Falling back to mock data for demo purposes')
     
     // Fallback to mock data if real API fails
     return generateMockTransactions(address, limit)
@@ -266,7 +259,6 @@ export async function getTransactionDetails(hash: string, chainId: number = 1): 
     // })
     
     // Mock implementation
-    console.log('Fetching transaction details for:', hash)
     
     await new Promise(resolve => setTimeout(resolve, 500))
     
@@ -297,7 +289,6 @@ export async function getTransactionDetails(hash: string, chainId: number = 1): 
       ],
     }
   } catch (error) {
-    console.error('Error fetching transaction details:', error)
     throw new Error('Failed to fetch transaction details')
   }
 }
@@ -311,7 +302,6 @@ export async function getTransactionDetails(hash: string, chainId: number = 1): 
  */
 export async function getTokenBalances(address: string, chainId: number = 1) {
   try {
-    console.log('Fetching REAL token balances for:', address, 'on chain:', chainId)
     
     // Check if chain is supported by Blockscout
     if (!isChainSupported(chainId)) {
@@ -335,8 +325,6 @@ export async function getTokenBalances(address: string, chainId: number = 1) {
     
     return tokenBalances
   } catch (error) {
-    console.error('Error fetching token balances:', error)
-    console.log('Falling back to mock data for demo purposes')
     
     // Fallback to mock data if real API fails
     return [

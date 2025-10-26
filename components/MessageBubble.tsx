@@ -5,8 +5,9 @@ import { Message } from '@/lib/store'
 import { formatAddress, getChainName, getChainIcon } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, CheckCircle, Clock, XCircle } from 'lucide-react'
+import { ExternalLink, CheckCircle, Clock, XCircle, History, Eye } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useBlockscoutSDK } from '@/lib/blockscout-sdk'
 
 interface MessageBubbleProps {
   message: Message
@@ -30,6 +31,7 @@ function ClientTimestamp({ timestamp }: { timestamp: Date | string }) {
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
+  const { showTransactionToast, showTransactionHistory } = useBlockscoutSDK()
 
   const getStatusIcon = () => {
     switch (message.status) {
@@ -157,6 +159,30 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     </div>
                   )}
                 </div>
+                
+                {/* Blockscout Action Buttons */}
+                {message.transactionHash && message.chainId && (
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs px-2"
+                      onClick={() => showTransactionToast(message.chainId!.toString(), message.transactionHash!)}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      Track
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs px-2"
+                      onClick={() => showTransactionHistory(message.chainId!.toString())}
+                    >
+                      <History className="h-3 w-3 mr-1" />
+                      History
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
