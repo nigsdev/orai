@@ -7,7 +7,6 @@ import { mainnet, optimism, polygon, arbitrum, base, sepolia } from 'wagmi/chain
 import { defineChain } from 'viem'
 import { Toaster } from '@/components/ui/toaster'
 import { http } from 'wagmi'
-import { NotificationProvider, TransactionPopupProvider } from '@blockscout/app-sdk'
 
 import '@rainbow-me/rainbowkit/styles.css'
 
@@ -50,12 +49,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
-          <NotificationProvider>
-            <TransactionPopupProvider>
-              {children}
-              <Toaster />
-            </TransactionPopupProvider>
-          </NotificationProvider>
+          {children}
+          <Toaster />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

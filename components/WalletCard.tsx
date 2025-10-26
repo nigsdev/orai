@@ -19,6 +19,7 @@ export function WalletCard() {
   const { toast } = useToast()
 
   // Debug logging
+  console.log('WalletCard - isConnected:', isConnected, 'address:', address)
 
   const handleConnect = async () => {
     try {
@@ -37,6 +38,7 @@ export function WalletCard() {
         })
       }
     } catch (error) {
+      console.error('Connection error:', error)
       toast({
         title: 'Connection Failed',
         description: 'Please install MetaMask or another Web3 wallet',

@@ -7,9 +7,8 @@ import { TypingIndicator } from './Loader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Send, Bot, User, RotateCcw, History, Eye } from 'lucide-react'
+import { Send, Bot, User, RotateCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useBlockscoutSDK } from '@/lib/blockscout-sdk'
 
 export function ChatWindow() {
   const [input, setInput] = useState('')
@@ -18,7 +17,6 @@ export function ChatWindow() {
   const inputRef = useRef<HTMLInputElement>(null)
   
   const { messages, isLoading, addMessage, setLoading, resetChat, wallet } = useChatStore()
-  const { showTransactionHistory, showTransactionToast } = useBlockscoutSDK()
 
   const scrollToBottom = (force = false) => {
     if (messagesEndRef.current) {
@@ -94,17 +92,10 @@ export function ChatWindow() {
         metadata: data.metadata,
       })
 
-      // Show transaction toast if there's a transaction hash
-      if (data.transactionHash && data.chainId) {
-        try {
-          await showTransactionToast(data.chainId.toString(), data.transactionHash)
-        } catch (error) {
-        }
-      }
-
       // Force scroll to bottom after AI response
       setTimeout(() => scrollToBottom(true), 100)
     } catch (error) {
+      console.error('Error sending message:', error)
       addMessage({
         content: 'Sorry, I encountered an error processing your request. Please try again.',
         role: 'assistant',
@@ -135,31 +126,10 @@ export function ChatWindow() {
     }, 100)
   }
 
-  // Helper functions for Blockscout functionality
-  const handleShowTransactionHistory = () => {
-    if (wallet.address && wallet.chainId) {
-      showTransactionHistory(wallet.chainId.toString(), wallet.address)
-    } else {
-      setInput('Show my transaction history')
-    }
-  }
-
-  const handleShowWalletAnalytics = () => {
-    setInput('Show my wallet analytics and balance')
-  }
-
   const quickActions = [
     {
       label: 'Send 10 USDC from Ethereum to Polygon',
       action: () => setInput('Send 10 USDC from Ethereum to Polygon'),
-    },
-    {
-      label: 'Show my transaction history',
-      action: handleShowTransactionHistory,
-    },
-    {
-      label: 'Show wallet analytics',
-      action: handleShowWalletAnalytics,
     },
     {
       label: 'Show my last 5 transactions on Arbitrum',
@@ -237,33 +207,6 @@ export function ChatWindow() {
             <span className="hidden sm:inline">Reset Chat</span>
             <span className="sm:hidden">Reset</span>
           </Button>
-          
-          {/* Blockscout Action Buttons */}
-          {wallet.address && wallet.chainId && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShowTransactionHistory}
-                className="text-xs h-6 md:h-7 px-2 md:px-3"
-              >
-                <History className="h-3 w-3 mr-1" />
-                <span className="hidden sm:inline">Tx History</span>
-                <span className="sm:hidden">History</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShowWalletAnalytics}
-                className="text-xs h-6 md:h-7 px-2 md:px-3"
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                <span className="hidden sm:inline">Analytics</span>
-                <span className="sm:hidden">Analytics</span>
-              </Button>
-            </>
-          )}
-          
           <span className="text-xs text-muted-foreground hidden sm:inline">
             {messages.length > 1 ? `${messages.length - 1} messages` : 'Fresh chat'}
           </span>

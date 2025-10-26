@@ -93,40 +93,6 @@ export default function ChatPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Blockscout SDK Features */}
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-white mb-4">🔍 Blockscout Integration</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/20 rounded-lg">
-                    <Bot className="h-4 w-4 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">Transaction Tracking</p>
-                    <p className="text-xs text-gray-400">Real-time transaction notifications</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-500/20 rounded-lg">
-                    <Shield className="h-4 w-4 text-orange-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">Wallet Analytics</p>
-                    <p className="text-xs text-gray-400">Comprehensive wallet insights</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
       </div>
     </MainLayout>
   )

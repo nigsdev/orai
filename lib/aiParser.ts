@@ -16,7 +16,7 @@
 import OpenAI from 'openai'
 
 export interface ParsedIntent {
-  action: 'transfer' | 'bridge' | 'stake' | 'swap' | 'analytics' | 'query' | 'transaction_history' | 'transaction_details' | 'wallet_summary' | 'hedera_operation'
+  action: 'transfer' | 'bridge' | 'stake' | 'swap' | 'analytics' | 'query'
   parameters: Record<string, any>
   confidence: number
   reasoning: string
@@ -36,6 +36,7 @@ function initializeOpenAI() {
   const apiKey = process.env.OPENAI_API_KEY
   
   if (!apiKey) {
+    console.warn('OpenAI API key not found. Using mock responses.')
     return null
   }
   
@@ -134,6 +135,7 @@ Respond in JSON format with this structure:
     const parsed = JSON.parse(response)
     return parsed as AIResponse
   } catch (error) {
+    console.error('Error parsing query with AI:', error)
     // Fallback to mock response
     return generateMockResponse(query, context)
   }

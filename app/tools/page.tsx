@@ -68,16 +68,19 @@ export default function ToolsPage() {
       title: "Optimize Gas",
       description: "Find the best time to transact",
       icon: Zap,
+      action: () => console.log("Optimize gas")
     },
     {
       title: "Bridge Assets",
       description: "Move tokens between chains",
       icon: ArrowRightLeft,
+      action: () => console.log("Bridge assets")
     },
     {
       title: "Security Check",
       description: "Verify contract security",
       icon: Lock,
+      action: () => console.log("Security check")
     }
   ]
 

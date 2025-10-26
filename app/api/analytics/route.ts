@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
+    console.error('Error in analytics API:', error)
     return NextResponse.json(
       { 
         success: false,
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
+    console.error('Error in analytics POST API:', error)
     return NextResponse.json(
       { 
         success: false,
