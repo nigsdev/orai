@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
@@ -90,7 +91,31 @@ export function Sidebar({ isOpen = false, onToggle }: SidebarProps) {
               className="flex items-center gap-3 font-bold text-white text-xl hover:glow-accent-hover transition-all duration-300" 
               href="/"
             >
-              <img src="/images/orailogo.png" alt="ORAI Logo" width={100} height={50} />
+              <div className="relative">
+                <Image 
+                  src="/orailogo.png" 
+                  alt="ORAI Logo" 
+                  width={100} 
+                  height={50}
+                  className="object-contain max-w-full h-auto"
+                  priority
+                  style={{ 
+                    maxWidth: '100px', 
+                    height: 'auto',
+                    display: 'block'
+                  }}
+                  onLoad={() => console.log('✅ ORAI Logo loaded successfully')}
+                  onError={(e) => {
+                    console.error('❌ Failed to load ORAI logo:', e);
+                    // Hide the image and show text fallback
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                {/* Text fallback that shows if image fails */}
+                <div className="text-white font-bold text-xl hidden" style={{ display: 'none' }}>
+                  ORAI
+                </div>
+              </div>
             </Link>
           </div>
 

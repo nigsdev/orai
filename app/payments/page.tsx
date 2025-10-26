@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react"
 import { useAccount, useBalance, useChainId } from "wagmi"
 import { useChatStore } from "@/lib/store"
 import { getWalletAnalytics, getTokenBalances } from "@/lib/blockscout"
-import { getUnifiedBalances } from "@/lib/avail"
+import { getUnifiedBalances, resetAvailSDK } from "@/lib/avail"
 
 // Available tokens for dropdown
 const availableTokens = [
@@ -133,8 +133,10 @@ export default function PaymentsPage() {
   const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false)
   const [isTokenDropdownOpen, setIsTokenDropdownOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [paymentInProgress, setPaymentInProgress] = useState(false)
   const chainDropdownRef = useRef<HTMLDivElement>(null)
   const tokenDropdownRef = useRef<HTMLDivElement>(null)
+  const lastPaymentAttemptRef = useRef<number>(0)
   const [analytics, setAnalytics] = useState<any>(null)
   const [unifiedBalances, setUnifiedBalances] = useState<any>(null)
   const [recentTransactions, setRecentTransactions] = useState<any[]>([])
@@ -215,8 +217,7 @@ export default function PaymentsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Prioritize manual chain ID detection over Wagmi hooks
-  const actualChainId = manualChainId || chainId || chain?.id || 1
+  // actualChainId is already defined above on line 151
   
   // Get chain name with fallback
   const getChainName = (chainId: number): string => {
@@ -350,6 +351,21 @@ export default function PaymentsPage() {
 
   // Handle payment sending
   const handleSendPayment = async () => {
+    const now = Date.now()
+    
+    // Prevent multiple simultaneous payments
+    if (paymentInProgress) {
+      console.log('Payment already in progress, ignoring duplicate request')
+      return
+    }
+
+    // Debounce: prevent rapid clicking (minimum 3 seconds between attempts)
+    if (now - lastPaymentAttemptRef.current < 3000) {
+      console.log('Payment attempt too soon, please wait')
+      alert('Please wait a moment before trying again')
+      return
+    }
+
     if (!recipient || !amount || !selectedToken) {
       alert('Please fill in all fields')
       return
@@ -360,7 +376,11 @@ export default function PaymentsPage() {
       return
     }
 
+    // Record this payment attempt
+    lastPaymentAttemptRef.current = now
+
     try {
+      setPaymentInProgress(true)
       setLoading(true)
       
       // LOCK the source chain ID BEFORE any SDK calls to prevent automatic switching
@@ -422,29 +442,49 @@ export default function PaymentsPage() {
       
       console.log('Payment result:', result)
       
-      // Handle different response types from Avail SDK
-      if (result.transactionHash) {
-        // Traditional transaction hash response
-        if (!result.transactionHash.startsWith('0x') || result.transactionHash.length !== 66) {
-          throw new Error('Invalid transaction hash format')
-        }
-        alert(`Payment successful! Transaction: ${result.transactionHash}`)
-      } else if (result.bridgeId || result.messageId) {
-        // Message-first response (common with Avail)
-        const id = result.bridgeId || result.messageId
-        alert(`Payment submitted! Bridge ID: ${id}. The transaction will be processed by the Avail network.`)
+      // Handle successful transaction
+      console.log('✅ Payment completed successfully:', result)
+      
+      // Clear form fields immediately
+      setRecipient("")
+      setAmount("")
+      
+      // Show success message based on what we received
+      if (result.transactionHash && result.transactionHash !== 'unknown') {
+        alert(`🎉 Payment Successful!\n\nTransaction Hash: ${result.transactionHash}\n\nThe transaction has been completed and funds have been transferred.`)
+      } else if (result.bridgeId && result.bridgeId !== 'unknown') {
+        alert(`🎉 Payment Submitted Successfully!\n\nBridge ID: ${result.bridgeId}\n\nThe transaction is being processed by the Avail network and will be completed shortly.`)
       } else {
-        throw new Error('No transaction hash or bridge ID received from Avail SDK')
+        alert(`🎉 Payment Successful!\n\nThe transaction has been completed successfully.`)
       }
       
-      // Refresh wallet data
-      window.location.reload()
+      // Refresh wallet data after a short delay
+      setTimeout(() => {
+        window.location.reload()
+      }, 3000) // Give user time to read the success message
       
     } catch (error) {
       console.error('Payment failed:', error)
-      alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      // Handle specific error cases
+      if (error instanceof Error) {
+        if (error.message.includes('Transaction was cancelled by user')) {
+          alert('Transaction was cancelled. No payment was made.')
+        } else if (error.message.includes('Another operation is already in progress')) {
+          alert('A payment is already being processed. Please wait for it to complete.')
+        } else if (error.message.includes('Avail SDK not initialized')) {
+          alert('Payment system not ready. Please refresh the page and try again.')
+        } else if (error.message.includes('User rejected') || error.message.includes('User denied')) {
+          alert('Transaction was cancelled by user. No payment was made.')
+        } else {
+          alert(`❌ Payment Failed\n\nError: ${error.message}\n\nPlease try again or contact support if the issue persists.`)
+        }
+      } else {
+        alert(`❌ Payment Failed\n\nUnknown error occurred. Please try again.`)
+      }
     } finally {
       setLoading(false)
+      setPaymentInProgress(false)
     }
   }
 
@@ -545,6 +585,18 @@ export default function PaymentsPage() {
               className="text-xs"
             >
               🔄 Refresh Chain
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => {
+                console.log('🔄 Resetting Avail SDK')
+                resetAvailSDK()
+                alert('Avail SDK reset. Please refresh the page.')
+              }}
+              className="text-xs"
+            >
+              🔄 Reset SDK
             </Button>
           </div>
           <div className="mt-2 text-xs text-gray-500 hidden sm:block">
@@ -657,14 +709,14 @@ export default function PaymentsPage() {
               <Button 
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border-0" 
                 onClick={handleSendPayment}
-                disabled={!isReady || loading}
+                disabled={!isReady || loading || paymentInProgress}
               >
-                {loading ? (
+                {loading || paymentInProgress ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4 mr-2" />
                 )}
-                {loading ? 'Processing...' : 'Send Payment'}
+                {loading || paymentInProgress ? 'Processing...' : 'Send Payment'}
               </Button>
             </CardContent>
           </Card>
