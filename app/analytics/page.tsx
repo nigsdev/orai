@@ -20,6 +20,7 @@ export default function AnalyticsPage() {
     ethereum: null,
     optimism: null,
     opSepolia: null,
+    arbitrumSepolia: null,
     combined: null
   })
 
@@ -31,38 +32,57 @@ export default function AnalyticsPage() {
         try {
           console.log('🔄 Fetching multi-chain analytics for wallet:', address)
           
-          // Fetch data from Ethereum, OP Mainnet, and OP Sepolia
-          const [ethereumData, optimismData, opSepoliaData] = await Promise.allSettled([
+          // Fetch data from Ethereum, OP Mainnet, OP Sepolia, and Arbitrum Sepolia
+          // Fetch data from all chains with cache busting
+          const timestamp = Date.now()
+          console.log('🔄 Fetching fresh data at timestamp:', timestamp)
+          
+          const [ethereumData, optimismData, opSepoliaData, arbitrumSepoliaData] = await Promise.allSettled([
             getWalletAnalytics(address, 1), // Ethereum
             getWalletAnalytics(address, 10), // OP Mainnet
-            getWalletAnalytics(address, 11155420) // OP Sepolia
+            getWalletAnalytics(address, 11155420), // OP Sepolia
+            getWalletAnalytics(address, 421614) // Arbitrum Sepolia
           ])
 
           const ethereum = ethereumData.status === 'fulfilled' ? ethereumData.value : null
           const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
           const opSepolia = opSepoliaData.status === 'fulfilled' ? opSepoliaData.value : null
+          const arbitrumSepolia = arbitrumSepoliaData.status === 'fulfilled' ? arbitrumSepoliaData.value : null
 
           console.log('📊 Ethereum data:', ethereum)
           console.log('📊 OP Mainnet data:', optimism)
           console.log('📊 OP Sepolia data:', opSepolia)
+          console.log('📊 Arbitrum Sepolia data:', arbitrumSepolia)
+          
+          // Debug specific balance values
+          console.log('🔍 OP Sepolia balance:', opSepolia?.wallet?.balance)
+          console.log('🔍 Arbitrum Sepolia balance:', arbitrumSepolia?.wallet?.balance)
+          
+          // Debug transaction data
+          console.log('🔍 OP Sepolia transactions:', opSepolia?.recentTransactions?.length || 0)
+          console.log('🔍 Arbitrum Sepolia transactions:', arbitrumSepolia?.recentTransactions?.length || 0)
+          console.log('🔍 Ethereum transactions:', ethereum?.recentTransactions?.length || 0)
+          console.log('🔍 OP Mainnet transactions:', optimism?.recentTransactions?.length || 0)
 
           // Combine the data
           const combined = {
-            totalBalance: (parseFloat(ethereum?.wallet?.balance || '0') + parseFloat(optimism?.wallet?.balance || '0') + parseFloat(opSepolia?.wallet?.balance || '0')).toFixed(4),
-            totalTransactions: (ethereum?.wallet?.transactionCount || 0) + (optimism?.wallet?.transactionCount || 0) + (opSepolia?.wallet?.transactionCount || 0),
+            totalBalance: (parseFloat(ethereum?.wallet?.balance || '0') + parseFloat(optimism?.wallet?.balance || '0') + parseFloat(opSepolia?.wallet?.balance || '0') + parseFloat(arbitrumSepolia?.wallet?.balance || '0')).toFixed(4),
+            totalTransactions: (ethereum?.wallet?.transactionCount || 0) + (optimism?.wallet?.transactionCount || 0) + (opSepolia?.wallet?.transactionCount || 0) + (arbitrumSepolia?.wallet?.transactionCount || 0),
             allTransactions: [
               ...(ethereum?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Ethereum' })),
               ...(optimism?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Mainnet' })),
-              ...(opSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Sepolia' }))
+              ...(opSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Sepolia' })),
+              ...(arbitrumSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Arbitrum Sepolia' }))
             ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
             tokenBalances: {
               ethereum: ethereum?.wallet?.tokenBalances || [],
               optimism: optimism?.wallet?.tokenBalances || [],
-              opSepolia: opSepolia?.wallet?.tokenBalances || []
+              opSepolia: opSepolia?.wallet?.tokenBalances || [],
+              arbitrumSepolia: arbitrumSepolia?.wallet?.tokenBalances || []
             }
           }
 
-          setMultiChainData({ ethereum, optimism, opSepolia, combined })
+          setMultiChainData({ ethereum, optimism, opSepolia, arbitrumSepolia, combined })
           setAnalytics(combined)
           
           console.log('✅ Combined analytics data:', combined)
@@ -101,34 +121,30 @@ export default function AnalyticsPage() {
     {
       title: "Total Portfolio Value",
       value: totalEthBalance > 0 ? `${totalEthBalance.toFixed(4)} ETH` : "0.0000 ETH",
-      change: "Real Balance",
-      changeType: "neutral" as const,
       icon: DollarSign,
-      description: "Across all chains"
+      description: "Across all chains",
+      trend: { value: 0, label: "Real Balance" }
     },
     {
       title: "Total Transactions",
       value: totalTransactions.toString(),
-      change: "Real Count",
-      changeType: "neutral" as const,
       icon: Activity,
-      description: "All chains combined"
+      description: "All chains combined",
+      trend: { value: 0, label: "Real Count" }
     },
     {
       title: "Cross-Chain Volume",
       value: crossChainVolume > 0 ? `${crossChainVolume.toFixed(4)} ETH` : "0.0000 ETH",
-      change: "Real Volume",
-      changeType: "neutral" as const,
       icon: TrendingUp,
-      description: "Total transaction volume"
+      description: "Total transaction volume",
+      trend: { value: 0, label: "Real Volume" }
     },
     {
       title: "Total Gas Fees",
       value: totalGasFees > 0 ? `${totalGasFees.toFixed(6)} ETH` : "0.000000 ETH",
-      change: "Real Fees",
-      changeType: "neutral" as const,
       icon: TrendingDown,
-      description: "Total gas spent"
+      description: "Total gas spent",
+      trend: { value: 0, label: "Real Fees" }
     }
   ]
 
@@ -141,8 +157,29 @@ export default function AnalyticsPage() {
             Comprehensive insights into your Web3 portfolio and transaction patterns.
           </p>
           {isConnected && (
-            <div className="mt-2 text-xs md:text-sm text-blue-400">
-              📊 Connected Wallet: {address} | Loading: {loading ? 'Yes' : 'No'}
+            <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+              <div className="text-xs md:text-sm text-blue-400">
+                📊 Connected Wallet: {address} | Loading: {loading ? 'Yes' : 'No'}
+              </div>
+              <button 
+                onClick={() => {
+                  console.log('🔄 Manual refresh triggered - clearing cache')
+                  // Clear any cached data and force fresh fetch
+                  setAnalytics(null)
+                  setMultiChainData({
+                    ethereum: null,
+                    optimism: null,
+                    opSepolia: null,
+                    arbitrumSepolia: null,
+                    combined: null
+                  })
+                  // Force a hard reload to clear all caches
+                  window.location.reload()
+                }}
+                className="text-xs bg-blue-500/20 hover:bg-blue-500/30 px-2 py-1 rounded border border-blue-500/30 text-blue-400 hover:text-blue-300 transition-all"
+              >
+                🔄 Refresh Data
+              </button>
             </div>
           )}
         </div>
@@ -156,10 +193,7 @@ export default function AnalyticsPage() {
               value={stat.value}
               icon={stat.icon}
               description={stat.description}
-              trend={{
-                value: parseFloat(stat.change.replace(/[+%]/g, '')),
-                label: stat.description
-              }}
+              trend={stat.trend}
             />
           ))}
         </ResponsiveGrid>
@@ -189,10 +223,28 @@ export default function AnalyticsPage() {
           />
           <StatsCard
             title="Active Chains"
-            value={`${[multiChainData.ethereum, multiChainData.optimism].filter(Boolean).length}/2`}
+            value={`${[multiChainData.ethereum, multiChainData.optimism, multiChainData.opSepolia, multiChainData.arbitrumSepolia].filter(Boolean).length}/4`}
             description="Chains with activity"
             icon={TrendingDown}
             trend={{ value: 0, label: "Active chains" }}
+          />
+        </div>
+
+        {/* Testnet Chain Balances */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+          <StatsCard
+            title="OP Sepolia Balance"
+            value={multiChainData.opSepolia?.wallet?.balance ? `${multiChainData.opSepolia.wallet.balance} ETH` : "0.0000 ETH"}
+            description="OP Sepolia Testnet"
+            icon={TrendingUp}
+            trend={{ value: 0, label: "OP Sepolia balance" }}
+          />
+          <StatsCard
+            title="Arbitrum Sepolia Balance"
+            value={multiChainData.arbitrumSepolia?.wallet?.balance ? `${multiChainData.arbitrumSepolia.wallet.balance} ETH` : "0.0000 ETH"}
+            description="Arbitrum Sepolia Testnet"
+            icon={TrendingDown}
+            trend={{ value: 0, label: "Arbitrum Sepolia balance" }}
           />
         </div>
 
@@ -308,6 +360,42 @@ export default function AnalyticsPage() {
                     ))
                   ) : (
                     <div className="text-gray-400 text-sm">No tokens on OP Mainnet</div>
+                  )}
+                </div>
+
+                {/* OP Sepolia Chain */}
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-purple-400">OP Sepolia</div>
+                  {analytics?.tokenBalances?.opSepolia?.length > 0 ? (
+                    analytics.tokenBalances.opSepolia.map((token: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+                          <span className="text-white text-sm">{token.symbol}</span>
+                        </div>
+                        <span className="text-white font-medium text-sm">{token.balance}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-400 text-sm">No tokens on OP Sepolia</div>
+                  )}
+                </div>
+
+                {/* Arbitrum Sepolia Chain */}
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-cyan-400">Arbitrum Sepolia</div>
+                  {analytics?.tokenBalances?.arbitrumSepolia?.length > 0 ? (
+                    analytics.tokenBalances.arbitrumSepolia.map((token: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 bg-cyan-500 rounded-full"></div>
+                          <span className="text-white text-sm">{token.symbol}</span>
+                        </div>
+                        <span className="text-white font-medium text-sm">{token.balance}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-400 text-sm">No tokens on Arbitrum Sepolia</div>
                   )}
                 </div>
               </div>

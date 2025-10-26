@@ -13,10 +13,15 @@ function generateVolumeData(transactions: any[]) {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const volumeData = days.map(day => ({ day, volume: 0 }))
   
-  // Distribute transactions across days (simplified)
-  transactions.forEach((tx, index) => {
-    const dayIndex = index % 7
-    volumeData[dayIndex].volume += parseFloat(tx.value) * 1000 // Convert to volume
+  // Distribute transactions across days based on actual timestamps
+  transactions.forEach((tx) => {
+    const txDate = new Date(tx.timestamp)
+    const dayOfWeek = txDate.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convert to our array index (0 = Monday)
+    
+    if (dayIndex >= 0 && dayIndex < 7) {
+      volumeData[dayIndex].volume += parseFloat(tx.value || '0') * 1000 // Convert to volume scale
+    }
   })
   
   return volumeData
@@ -63,18 +68,64 @@ export function RightPanel() {
 
   const actualChainId = manualChainId || chainId || chain?.id || 1
 
-  // Fetch wallet analytics when wallet is connected
+  // Fetch multi-chain wallet analytics when wallet is connected
   useEffect(() => {
-    const fetchAnalytics = async () => {
+    const fetchMultiChainAnalytics = async () => {
       if (isConnected && address) {
         setLoading(true)
         try {
-          console.log('Fetching right panel analytics for wallet:', address, 'on chain:', actualChainId)
-          const data = await getWalletAnalytics(address, actualChainId)
-          setAnalytics(data)
-          console.log('Right panel analytics data received:', data)
+          console.log('Fetching multi-chain analytics for right panel:', address)
+          
+          // Fetch data from all chains
+          const [ethereumData, optimismData, opSepoliaData, arbitrumSepoliaData] = await Promise.allSettled([
+            getWalletAnalytics(address, 1), // Ethereum
+            getWalletAnalytics(address, 10), // OP Mainnet
+            getWalletAnalytics(address, 11155420), // OP Sepolia
+            getWalletAnalytics(address, 421614) // Arbitrum Sepolia
+          ])
+
+          const ethereum = ethereumData.status === 'fulfilled' ? ethereumData.value : null
+          const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
+          const opSepolia = opSepoliaData.status === 'fulfilled' ? opSepoliaData.value : null
+          const arbitrumSepolia = arbitrumSepoliaData.status === 'fulfilled' ? arbitrumSepoliaData.value : null
+
+          // Combine all transactions from all chains
+          const allTransactions = [
+            ...(ethereum?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Ethereum' })),
+            ...(optimism?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Mainnet' })),
+            ...(opSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Sepolia' })),
+            ...(arbitrumSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Arbitrum Sepolia' }))
+          ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+          // Create combined analytics data
+          const combinedAnalytics = {
+            wallet: {
+              address,
+              balance: (parseFloat(ethereum?.wallet?.balance || '0') + 
+                      parseFloat(optimism?.wallet?.balance || '0') + 
+                      parseFloat(opSepolia?.wallet?.balance || '0') + 
+                      parseFloat(arbitrumSepolia?.wallet?.balance || '0')).toFixed(4),
+              transactionCount: allTransactions.length,
+              tokenBalances: []
+            },
+            recentTransactions: allTransactions,
+            analytics: {
+              totalValue: (parseFloat(ethereum?.wallet?.balance || '0') + 
+                         parseFloat(optimism?.wallet?.balance || '0') + 
+                         parseFloat(opSepolia?.wallet?.balance || '0') + 
+                         parseFloat(arbitrumSepolia?.wallet?.balance || '0')).toFixed(4),
+              transactionVolume: allTransactions.reduce((sum: number, tx: any) => sum + parseFloat(tx.value || '0'), 0).toFixed(4),
+              averageGasPrice: allTransactions.length > 0 ? 
+                (allTransactions.reduce((sum: number, tx: any) => sum + parseInt(tx.gasPrice || '0'), 0) / allTransactions.length).toFixed(0) : '0',
+              successRate: allTransactions.length > 0 ? 
+                (allTransactions.filter((tx: any) => tx.status === 'success').length / allTransactions.length * 100).toFixed(1) : '0'
+            }
+          }
+
+          setAnalytics(combinedAnalytics)
+          console.log('Right panel multi-chain analytics data received:', combinedAnalytics)
         } catch (error) {
-          console.error('Error fetching right panel analytics:', error)
+          console.error('Error fetching multi-chain analytics for right panel:', error)
         } finally {
           setLoading(false)
         }
@@ -83,8 +134,8 @@ export function RightPanel() {
       }
     }
 
-    fetchAnalytics()
-  }, [isConnected, address, actualChainId])
+    fetchMultiChainAnalytics()
+  }, [isConnected, address])
 
   // Generate transaction volume data from real transactions or use mock data
   const transactionData = analytics?.recentTransactions?.length > 0 ? 
@@ -97,6 +148,10 @@ export function RightPanel() {
       { day: "Sat", volume: 2390 },
       { day: "Sun", volume: 3490 },
     ]
+
+  console.log('📊 Right panel analytics:', analytics)
+  console.log('📊 Recent transactions count:', analytics?.recentTransactions?.length || 0)
+  console.log('📊 Transaction data:', transactionData)
 
   const maxVolume = Math.max(...transactionData.map(d => d.volume))
 
