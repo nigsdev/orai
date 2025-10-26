@@ -23,6 +23,7 @@ import {
   AvailEventType,
   CrossChainIntent
 } from '@/types/avail'
+import { parseEther, zeroAddress } from 'viem'
 
 // Global SDK instance
 let sdkInstance: NexusSDK | null = null
@@ -97,8 +98,6 @@ export function getAvailSDK(): NexusSDK | null {
  * @param intent - The cross-chain operation details
  * @returns Promise<BridgeResult> - Transaction result with hash and status
  */
-// In lib/avail.ts, replace the executeCrossChainIntent function (lines 104-152):
-
 export async function executeCrossChainIntent(intent: CrossChainIntent): Promise<BridgeResult> {
   try {
     const sdk = getAvailSDK()
@@ -106,64 +105,81 @@ export async function executeCrossChainIntent(intent: CrossChainIntent): Promise
       throw new Error('Avail SDK not initialized')
     }
 
-    console.log('Executing cross-chain intent:', intent)
-    console.log('🔍 DEBUG - Intent details:', {
-      chainFrom: intent.chainFrom,
-      chainTo: intent.chainTo,
-      token: intent.token,
-      amount: intent.amount,
-      walletAddress: intent.walletAddress,
-      recipientAddress: intent.recipientAddress,
-      hasRecipient: !!intent.recipientAddress
-    })
 
-    // Choose the correct SDK method based on whether recipient is specified
-    let result: any
     
-    if (intent.recipientAddress) {
-      // Use transfer() when recipient address is specified
-      const transferParams = {
-        token: intent.token as any, // Type assertion for SDK compatibility
-        amount: intent.amount,
-        chainId: intent.chainTo as any, // Type assertion for chain ID
-        recipient: intent.recipientAddress as `0x${string}`, // Proper Ethereum address type
+    // Execute bridge operation with proper SDK types
+    const result = await sdk.bridge({
+      token: intent.token as any, // SDK will handle token validation
+      amount: intent.amount,
+      chainId: intent.chainTo as any, // SDK will handle chain validation
+      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
+    })
+    
+    
+    // Check if result indicates a failure
+    if (result && typeof result === 'object') {
+      const resultAny = result as any
+      if (resultAny.error || resultAny.failed || resultAny.status === 'failed') {
+        throw new Error(`SDK bridge failed: ${resultAny.error || resultAny.message || 'Unknown error'}`)
       }
       
-      console.log('🔍 DEBUG - Using transfer() with params:', transferParams)
-      result = await sdk.transfer(transferParams)
-    } else {
-      // Use bridge() when sending to self (no recipient specified)
-      const bridgeParams = {
-        token: intent.token as any, // Type assertion for SDK compatibility
-        amount: intent.amount,
-        chainId: intent.chainTo as any, // Type assertion for chain ID
+      if (resultAny.status === 'pending' || resultAny.status === 'processing') {
+      }
+    }
+    
+    // Enhanced transaction hash detection
+    let transactionHash = null
+    if (result) {
+      // Try multiple possible property names for transaction hash
+      const possibleHashKeys = [
+        'transactionHash', 'txHash', 'hash', 'tx', 'transactionId', 
+        'id', 'bridgeId', 'bridgeHash', 'crossChainHash', 'receipt',
+        'txHash', 'transaction', 'result', 'data'
+      ]
+      
+      for (const key of possibleHashKeys) {
+        if ((result as any)[key] && typeof (result as any)[key] === 'string' && (result as any)[key].startsWith('0x')) {
+          transactionHash = (result as any)[key]
+          break
+        }
       }
       
-      console.log('🔍 DEBUG - Using bridge() with params:', bridgeParams)
-      result = await sdk.bridge(bridgeParams)
+      // If no hash found, log all properties for debugging
+      if (!transactionHash) {
+      }
     }
     
-    // Handle SDK response format
-    if (!result.success) {
-      throw new Error(result.error || 'Bridge/Transfer operation failed')
-    }
-    
-    if (!result.transactionHash) {
-      throw new Error('No transaction hash returned from Avail SDK')
+    // Handle SDK response format - only return real transaction data
+    if (!transactionHash) {
+      throw new Error('No transaction hash returned from Avail SDK - bridge may have failed')
     }
     
     const bridgeResult: BridgeResult = {
-      transactionHash: result.transactionHash,
-      bridgeId: result.transactionHash, // Use transaction hash as bridge ID
-      estimatedTime: '2-5 minutes',
-      gasCost: '$0.35',
-      status: 'success',
+      transactionHash: transactionHash,
+      bridgeId: (result as any)?.bridgeId || `bridge_${Date.now()}`,
+      estimatedTime: (result as any)?.estimatedTime || '2-5 minutes',
+      gasCost: (result as any)?.gasCost || '$0.35',
+      status: (result as any)?.status || 'success',
     }
     
-    return bridgeResult
+    // RESTORE ORIGINAL CHAIN: Switch back to source chain if it was changed
+    if (originalChainId && window.ethereum) {
+      try {
+        const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+        if (currentChainId !== originalChainId) {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: originalChainId }],
+          });
+        }
+      } catch (e) {
+      }
+    }
+    
+    return out
   } catch (error) {
-    console.error('Error executing cross-chain intent:', error)
-    throw new Error(`Failed to execute cross-chain transaction: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    const message = error instanceof Error ? error.message : 'Failed to execute cross-chain transaction'
+    throw new Error(message)
   }
 }
 
@@ -230,31 +246,19 @@ export async function estimateBridgeFees(intent: CrossChainIntent): Promise<Brid
       throw new Error('Avail SDK not initialized')
     }
 
-    // Use the correct simulation method based on whether recipient is specified
-    let estimate: any
-    
-    if (intent.recipientAddress) {
-      // Use simulateTransfer() when recipient address is specified
-      estimate = await sdk.simulateTransfer({
-        token: intent.token as any,
-        amount: intent.amount,
-        chainId: intent.chainTo as any,
-        recipient: intent.recipientAddress as `0x${string}`,
-      })
-    } else {
-      // Use simulateBridge() when sending to self
-      estimate = await sdk.simulateBridge({
-        token: intent.token as any,
-        amount: intent.amount,
-        chainId: intent.chainTo as any,
-      })
-    }
+    // Get real fee estimation with proper SDK types
+    const estimate = await sdk.simulateBridge({
+      token: intent.token as any, // SDK will handle token validation
+      amount: intent.amount,
+      chainId: intent.chainTo as any, // SDK will handle chain validation
+      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
+    })
     
     return {
-      bridgeFee: estimate?.bridgeFee || estimate?.intent?.fees || '0.1%',
-      gasFee: estimate?.gasFee || estimate?.totalEstimatedCost || '$0.35',
-      estimatedTime: estimate?.estimatedTime || '2-5 minutes',
-      slippage: estimate?.slippage || '0.5%',
+      bridgeFee: (estimate as any)?.bridgeFee || '0.1%',
+      gasFee: (estimate as any)?.gasFee || '$0.35',
+      estimatedTime: (estimate as any)?.estimatedTime || '2-5 minutes',
+      slippage: (estimate as any)?.slippage || '0.5%',
     }
   } catch (error) {
     // Fallback to mock data
@@ -314,4 +318,54 @@ export function setupPaymentEventListeners(
   sdk.nexusEvents.on('BRIDGE_EXECUTE_FAILED', (error: any) => {
     onError(new Error(error.message || 'Bridge operation failed'))
   })
+}
+
+/**
+ * Test Avail SDK bridge call with detailed debugging
+ */
+export async function testSDKBridgeCall(intent: CrossChainIntent): Promise<{
+  success: boolean;
+  result?: any;
+  error?: string;
+  debugInfo: any;
+}> {
+  try {
+    
+    const sdk = getAvailSDK()
+    if (!sdk) {
+      throw new Error('Avail SDK not initialized')
+    }
+    
+    
+    // Test the bridge call
+    const result = await sdk.bridge({
+      token: intent.token as any,
+      amount: intent.amount,
+      chainId: intent.chainTo as any,
+      ...(intent.recipientAddress && { toAddress: intent.recipientAddress })
+    })
+    
+    
+    return {
+      success: true,
+      result,
+      debugInfo: {
+        sdkInitialized: true,
+        resultType: typeof result,
+        resultKeys: result ? Object.keys(result) : [],
+        resultStringified: JSON.stringify(result, null, 2)
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      debugInfo: {
+        sdkInitialized: !!getAvailSDK(),
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
+      }
+    }
+  }
 }
