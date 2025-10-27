@@ -1,27 +1,39 @@
-"use client"
+"use client";
 
-import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ResponsiveGrid } from "@/components/ui/responsive-grid"
-import { Send, ArrowUpRight, ArrowDownLeft, CreditCard, Wallet, Loader2, ChevronDown } from "lucide-react"
-import { useState, useEffect, useRef } from "react"
-import { useAccount, useBalance, useChainId } from "wagmi"
-import { useChatStore } from "@/lib/store"
-import { getWalletAnalytics, getTokenBalances } from "@/lib/blockscout"
-import { getUnifiedBalances, resetAvailSDK } from "@/lib/avail"
+import { MainLayout } from "@/components/layout/main-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ResponsiveGrid } from "@/components/ui/responsive-grid";
+import {
+  Send,
+  ArrowUpRight,
+  ArrowDownLeft,
+  CreditCard,
+  Wallet,
+  Loader2,
+  ChevronDown,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useAccount, useBalance, useChainId } from "wagmi";
+import { useChatStore } from "@/lib/store";
+// Use API route instead of direct SDK import
+import { getUnifiedBalances, resetAvailSDK } from "@/lib/avail";
 
 // Available tokens for dropdown
 const availableTokens = [
-  { symbol: 'ETH', name: 'Ethereum' },
-  { symbol: 'USDC', name: 'USD Coin' },
-  { symbol: 'USDT', name: 'Tether USD' },
-  { symbol: 'MATIC', name: 'Polygon' },
-  { symbol: 'WMATIC', name: 'Wrapped MATIC' },
-]
-import { useAvailNexus } from "@/hooks/useAvailNexus"
-import { formatAddressForMobile, formatAddressForDesktop, cn } from "@/lib/utils"
+  { symbol: "ETH", name: "Ethereum" },
+  { symbol: "USDC", name: "USD Coin" },
+  { symbol: "USDT", name: "Tether USD" },
+  { symbol: "MATIC", name: "Polygon" },
+  { symbol: "WMATIC", name: "Wrapped MATIC" },
+];
+import { useAvailNexus } from "@/hooks/useAvailNexus";
+import {
+  formatAddressForMobile,
+  formatAddressForDesktop,
+  cn,
+} from "@/lib/utils";
 
 const networks = [
   { name: "Ethereum", symbol: "ETH", chainId: 1 },
@@ -31,14 +43,19 @@ const networks = [
   { name: "Arbitrum", symbol: "ARB", chainId: 42161 },
   { name: "Arbitrum Sepolia", symbol: "ETH", chainId: 421614 },
   { name: "Base", symbol: "BASE", chainId: 8453 },
-]
+];
 
 // Chain Dropdown Component
-function ChainDropdown({ selectedChain, setSelectedChain, isOpen, setIsOpen }: {
-  selectedChain: string
-  setSelectedChain: (chain: string) => void
-  isOpen: boolean
-  setIsOpen: (open: boolean) => void
+function ChainDropdown({
+  selectedChain,
+  setSelectedChain,
+  isOpen,
+  setIsOpen,
+}: {
+  selectedChain: string;
+  setSelectedChain: (chain: string) => void;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
 }) {
   return (
     <div className="relative z-50">
@@ -52,18 +69,20 @@ function ChainDropdown({ selectedChain, setSelectedChain, isOpen, setIsOpen }: {
         </div>
         <ChevronDown className="h-4 w-4" />
       </button>
-      
+
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/30 rounded-md shadow-2xl z-[9999] overflow-hidden">
           {networks.map((network) => (
             <button
               key={network.name}
               onClick={() => {
-                setSelectedChain(network.name)
-                setIsOpen(false)
+                setSelectedChain(network.name);
+                setIsOpen(false);
               }}
               className={`w-full px-3 py-2 text-left text-white hover:bg-white/10 transition-all duration-300 flex items-center gap-2 first:rounded-t-md last:rounded-b-md ${
-                selectedChain === network.name ? "bg-accent-blue-500/30 text-accent-blue-500" : ""
+                selectedChain === network.name
+                  ? "bg-accent-blue-500/30 text-accent-blue-500"
+                  : ""
               }`}
             >
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -76,15 +95,20 @@ function ChainDropdown({ selectedChain, setSelectedChain, isOpen, setIsOpen }: {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // Token Dropdown Component
-function TokenDropdown({ selectedToken, setSelectedToken, isOpen, setIsOpen }: {
-  selectedToken: string
-  setSelectedToken: (token: string) => void
-  isOpen: boolean
-  setIsOpen: (open: boolean) => void
+function TokenDropdown({
+  selectedToken,
+  setSelectedToken,
+  isOpen,
+  setIsOpen,
+}: {
+  selectedToken: string;
+  setSelectedToken: (token: string) => void;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
 }) {
   return (
     <div className="relative z-50">
@@ -98,18 +122,20 @@ function TokenDropdown({ selectedToken, setSelectedToken, isOpen, setIsOpen }: {
         </div>
         <ChevronDown className="h-4 w-4" />
       </button>
-      
+
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/30 rounded-md shadow-2xl z-[9999] overflow-hidden">
           {availableTokens.map((token) => (
             <button
               key={token.symbol}
               onClick={() => {
-                setSelectedToken(token.symbol)
-                setIsOpen(false)
+                setSelectedToken(token.symbol);
+                setIsOpen(false);
               }}
               className={`w-full px-3 py-2 text-left text-white hover:bg-white/10 transition-all duration-300 flex items-center gap-2 first:rounded-t-md last:rounded-b-md ${
-                selectedToken === token.symbol ? "bg-accent-blue-500/30 text-accent-blue-500" : ""
+                selectedToken === token.symbol
+                  ? "bg-accent-blue-500/30 text-accent-blue-500"
+                  : ""
               }`}
             >
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -122,286 +148,342 @@ function TokenDropdown({ selectedToken, setSelectedToken, isOpen, setIsOpen }: {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 export default function PaymentsPage() {
-  const [recipient, setRecipient] = useState("")
-  const [amount, setAmount] = useState("")
-  const [selectedToken, setSelectedToken] = useState("ETH")
-  const [selectedChain, setSelectedChain] = useState("Ethereum")
-  const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false)
-  const [isTokenDropdownOpen, setIsTokenDropdownOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [paymentInProgress, setPaymentInProgress] = useState(false)
-  const chainDropdownRef = useRef<HTMLDivElement>(null)
-  const tokenDropdownRef = useRef<HTMLDivElement>(null)
-  const lastPaymentAttemptRef = useRef<number>(0)
-  const [analytics, setAnalytics] = useState<any>(null)
-  const [unifiedBalances, setUnifiedBalances] = useState<any>(null)
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([])
-  const [tokens, setTokens] = useState<any[]>([])
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("");
+  const [selectedToken, setSelectedToken] = useState("ETH");
+  const [selectedChain, setSelectedChain] = useState("Ethereum");
+  const [isChainDropdownOpen, setIsChainDropdownOpen] = useState(false);
+  const [isTokenDropdownOpen, setIsTokenDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [paymentInProgress, setPaymentInProgress] = useState(false);
+  const chainDropdownRef = useRef<HTMLDivElement>(null);
+  const tokenDropdownRef = useRef<HTMLDivElement>(null);
+  const lastPaymentAttemptRef = useRef<number>(0);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [unifiedBalances, setUnifiedBalances] = useState<any>(null);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [tokens, setTokens] = useState<any[]>([]);
 
-  const { address, isConnected, chain } = useAccount()
-  const chainId = useChainId()
-  const { executeBridge, isReady } = useAvailNexus()
+  const { address, isConnected, chain } = useAccount();
+  const chainId = useChainId();
+  const { executeBridge, isReady } = useAvailNexus();
 
   // Get the actual chain ID (fallback to chain.id if useChainId() doesn't work)
-  const [manualChainId, setManualChainId] = useState<number | null>(null)
-  
+  const [manualChainId, setManualChainId] = useState<number | null>(null);
+
   // Get balance from the correct chain (use manualChainId if available)
-  const actualChainId = manualChainId || chainId || chain?.id || 1
-  const { data: balance } = useBalance({ 
+  const actualChainId = manualChainId || chainId || chain?.id || 1;
+  const { data: balance } = useBalance({
     address,
-    chainId: actualChainId
-  })
-  
+    chainId: actualChainId,
+  });
+
   // Fallback: Direct balance fetch for the current chain
-  const [directBalance, setDirectBalance] = useState<any>(null)
-  
+  const [directBalance, setDirectBalance] = useState<any>(null);
+
   useEffect(() => {
     const fetchDirectBalance = async () => {
       if (address && window.ethereum) {
         try {
           const balance = await window.ethereum.request({
-            method: 'eth_getBalance',
-            params: [address, 'latest']
-          })
-          const balanceInEth = parseInt(balance, 16) / 1e18
-          setDirectBalance({ value: balance, formatted: balanceInEth })
-          console.log('💰 Direct balance fetch:', balanceInEth, 'ETH on chain', actualChainId)
+            method: "eth_getBalance",
+            params: [address, "latest"],
+          });
+          const balanceInEth = parseInt(balance, 16) / 1e18;
+          setDirectBalance({ value: balance, formatted: balanceInEth });
+          console.log(
+            "💰 Direct balance fetch:",
+            balanceInEth,
+            "ETH on chain",
+            actualChainId
+          );
         } catch (error) {
-          console.error('Failed to fetch direct balance:', error)
+          console.error("Failed to fetch direct balance:", error);
         }
       }
-    }
-    
-    fetchDirectBalance()
-  }, [address, actualChainId])
-  
+    };
+
+    fetchDirectBalance();
+  }, [address, actualChainId]);
+
   // Get chain ID directly from wallet as fallback
   useEffect(() => {
     const getChainIdFromWallet = async () => {
-      if (typeof window !== 'undefined' && window.ethereum && isConnected) {
+      if (typeof window !== "undefined" && window.ethereum && isConnected) {
         try {
-          const chainId = await window.ethereum.request({ method: 'eth_chainId' })
-          const numericChainId = parseInt(chainId, 16)
-          console.log('🔗 Direct wallet chain ID:', numericChainId)
-          setManualChainId(numericChainId)
+          const chainId = await window.ethereum.request({
+            method: "eth_chainId",
+          });
+          const numericChainId = parseInt(chainId, 16);
+          console.log("🔗 Direct wallet chain ID:", numericChainId);
+          setManualChainId(numericChainId);
         } catch (error) {
-          console.error('Error getting chain ID from wallet:', error)
+          console.error("Error getting chain ID from wallet:", error);
         }
       }
-    }
-    
-    getChainIdFromWallet()
-    
+    };
+
+    getChainIdFromWallet();
+
     // Also poll for chain changes every 2 seconds as a fallback
-    const interval = setInterval(getChainIdFromWallet, 2000)
-    
-    return () => clearInterval(interval)
-  }, [isConnected])
+    const interval = setInterval(getChainIdFromWallet, 2000);
+
+    return () => clearInterval(interval);
+  }, [isConnected]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (chainDropdownRef.current && !chainDropdownRef.current.contains(event.target as Node)) {
-        setIsChainDropdownOpen(false)
+      if (
+        chainDropdownRef.current &&
+        !chainDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsChainDropdownOpen(false);
       }
-      if (tokenDropdownRef.current && !tokenDropdownRef.current.contains(event.target as Node)) {
-        setIsTokenDropdownOpen(false)
+      if (
+        tokenDropdownRef.current &&
+        !tokenDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsTokenDropdownOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // actualChainId is already defined above on line 151
-  
+
   // Get chain name with fallback
   const getChainName = (chainId: number): string => {
     const chainNames: Record<number, string> = {
-      1: 'Ethereum',
-      10: 'Optimism',
-      11155420: 'OP Sepolia',
-      11155111: 'Ethereum Sepolia',
-      42161: 'Arbitrum',
-      421614: 'Arbitrum Sepolia',
-      137: 'Polygon',
-      8453: 'Base',
-      84532: 'Base Sepolia',
-      80001: 'Polygon Mumbai'
-    }
-    return chainNames[chainId] || `Chain ${chainId}`
-  }
-  
-  const chainName = getChainName(actualChainId)
-  
+      1: "Ethereum",
+      10: "Optimism",
+      11155420: "OP Sepolia",
+      11155111: "Ethereum Sepolia",
+      42161: "Arbitrum",
+      421614: "Arbitrum Sepolia",
+      137: "Polygon",
+      8453: "Base",
+      84532: "Base Sepolia",
+      80001: "Polygon Mumbai",
+    };
+    return chainNames[chainId] || `Chain ${chainId}`;
+  };
+
+  const chainName = getChainName(actualChainId);
+
   // Get wagmi chain with fallback
   const wagmiChain = chain || {
     id: chainId,
     name: getChainName(chainId || 1),
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrls: { default: { http: [''] } },
-    blockExplorers: { default: { name: '', url: '' } }
-  }
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: { default: { http: [""] } },
+    blockExplorers: { default: { name: "", url: "" } },
+  };
 
   // Debug chain information
-  console.log('🔍 Chain Debug Info:', {
+  console.log("🔍 Chain Debug Info:", {
     wagmiChainId: chainId,
     wagmiChain: wagmiChain,
     manualChainId,
     actualChainId,
     isConnected,
     address,
-    chainName: chainName
-  })
+    chainName: chainName,
+  });
 
   // Listen for chain changes
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
+    if (typeof window !== "undefined" && window.ethereum) {
       const handleChainChanged = (chainId: string) => {
-        const numericChainId = parseInt(chainId, 16)
-        console.log('🔄 Chain changed to:', numericChainId)
-        setManualChainId(numericChainId)
-        
+        const numericChainId = parseInt(chainId, 16);
+        console.log("🔄 Chain changed to:", numericChainId);
+        setManualChainId(numericChainId);
+
         // Show warning if chain switched during transaction
         if (loading) {
-          console.warn('⚠️ Chain switched during transaction! This might cause issues.');
+          console.warn(
+            "⚠️ Chain switched during transaction! This might cause issues."
+          );
         }
-      }
+      };
 
-      window.ethereum.on('chainChanged', handleChainChanged)
-      
+      window.ethereum.on("chainChanged", handleChainChanged);
+
       return () => {
-        window.ethereum?.removeListener('chainChanged', handleChainChanged)
-      }
+        window.ethereum?.removeListener("chainChanged", handleChainChanged);
+      };
     }
-  }, [loading])
+  }, [loading]);
 
   // Fetch real wallet data from multiple chains (like Analytics page)
   useEffect(() => {
     const fetchMultiChainWalletData = async () => {
       if (isConnected && address) {
-        setLoading(true)
+        setLoading(true);
         try {
-          console.log('Fetching multi-chain wallet data for payments page:', address)
-          
+          console.log(
+            "Fetching multi-chain wallet data for payments page:",
+            address
+          );
+
           // Fetch data from Ethereum, OP Mainnet, and OP Sepolia (like Analytics page)
-          const [ethereumData, optimismData, opSepoliaData] = await Promise.allSettled([
-            getWalletAnalytics(address, 1), // Ethereum
-            getWalletAnalytics(address, 10), // OP Mainnet
-            getWalletAnalytics(address, 11155420) // OP Sepolia
-          ])
+          const fetchChain = async (addr: string, chain: number) => {
+            const res = await fetch(
+              `/api/analytics?address=${addr}&chainId=${chain}`
+            );
+            if (!res.ok) throw new Error(`API ${chain} failed`);
+            const json = await res.json();
+            return json.data;
+          };
 
-          const ethereum = ethereumData.status === 'fulfilled' ? ethereumData.value : null
-          const optimism = optimismData.status === 'fulfilled' ? optimismData.value : null
-          const opSepolia = opSepoliaData.status === 'fulfilled' ? opSepoliaData.value : null
+          const [ethereumData, optimismData, opSepoliaData] =
+            await Promise.allSettled([
+              fetchChain(address, 1),
+              fetchChain(address, 10),
+              fetchChain(address, 11155420),
+            ]);
 
-          console.log('📊 Ethereum data for payments:', ethereum)
-          console.log('📊 OP Mainnet data for payments:', optimism)
-          console.log('📊 OP Sepolia data for payments:', opSepolia)
+          const ethereum =
+            ethereumData.status === "fulfilled" ? ethereumData.value : null;
+          const optimism =
+            optimismData.status === "fulfilled" ? optimismData.value : null;
+          const opSepolia =
+            opSepoliaData.status === "fulfilled" ? opSepoliaData.value : null;
+
+          console.log("📊 Ethereum data for payments:", ethereum);
+          console.log("📊 OP Mainnet data for payments:", optimism);
+          console.log("📊 OP Sepolia data for payments:", opSepolia);
 
           // Combine transactions from all chains
           const allTransactions = [
-            ...(ethereum?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'Ethereum' })),
-            ...(optimism?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Mainnet' })),
-            ...(opSepolia?.recentTransactions || []).map((tx: any) => ({ ...tx, chain: 'OP Sepolia' }))
-          ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            ...(ethereum?.recentTransactions || []).map((tx: any) => ({
+              ...tx,
+              chain: "Ethereum",
+            })),
+            ...(optimism?.recentTransactions || []).map((tx: any) => ({
+              ...tx,
+              chain: "OP Mainnet",
+            })),
+            ...(opSepolia?.recentTransactions || []).map((tx: any) => ({
+              ...tx,
+              chain: "OP Sepolia",
+            })),
+          ].sort(
+            (a, b) =>
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
 
           // Combine token balances from all chains
           const allTokens = [
-            ...(ethereum?.wallet?.tokenBalances || []).map((token: any) => ({ ...token, chain: 'Ethereum' })),
-            ...(optimism?.wallet?.tokenBalances || []).map((token: any) => ({ ...token, chain: 'OP Mainnet' })),
-            ...(opSepolia?.wallet?.tokenBalances || []).map((token: any) => ({ ...token, chain: 'OP Sepolia' }))
-          ]
+            ...(ethereum?.wallet?.tokenBalances || []).map((token: any) => ({
+              ...token,
+              chain: "Ethereum",
+            })),
+            ...(optimism?.wallet?.tokenBalances || []).map((token: any) => ({
+              ...token,
+              chain: "OP Mainnet",
+            })),
+            ...(opSepolia?.wallet?.tokenBalances || []).map((token: any) => ({
+              ...token,
+              chain: "OP Sepolia",
+            })),
+          ];
 
           // Set the combined data
-          setRecentTransactions(allTransactions)
-          setTokens(allTokens)
-          
+          setRecentTransactions(allTransactions);
+          setTokens(allTokens);
+
           // Set analytics data (use the current chain's data for analytics)
-          const currentChainData = actualChainId === 10 ? optimism : ethereum
-          setAnalytics(currentChainData)
-          
+          const currentChainData = actualChainId === 10 ? optimism : ethereum;
+          setAnalytics(currentChainData);
+
           // Try to get unified balances from Avail
           try {
-            const unified = await getUnifiedBalances()
-            setUnifiedBalances(unified)
+            const unified = await getUnifiedBalances();
+            setUnifiedBalances(unified);
           } catch (error) {
-            console.log('Unified balances not available, using regular balances')
+            console.log(
+              "Unified balances not available, using regular balances"
+            );
           }
-          
         } catch (error) {
-          console.error('Error fetching multi-chain wallet data:', error)
+          console.error("Error fetching multi-chain wallet data:", error);
           // Fallback to empty data
-          setRecentTransactions([])
-          setTokens([])
+          setRecentTransactions([]);
+          setTokens([]);
         } finally {
-          setLoading(false)
+          setLoading(false);
         }
       } else {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchMultiChainWalletData()
-  }, [isConnected, address, actualChainId, manualChainId])
+    fetchMultiChainWalletData();
+  }, [isConnected, address, actualChainId, manualChainId]);
 
   // Handle payment sending
   const handleSendPayment = async () => {
-    const now = Date.now()
-    
+    const now = Date.now();
+
     // Prevent multiple simultaneous payments
     if (paymentInProgress) {
-      console.log('Payment already in progress, ignoring duplicate request')
-      return
+      console.log("Payment already in progress, ignoring duplicate request");
+      return;
     }
 
     // Debounce: prevent rapid clicking (minimum 3 seconds between attempts)
     if (now - lastPaymentAttemptRef.current < 3000) {
-      console.log('Payment attempt too soon, please wait')
-      alert('Please wait a moment before trying again')
-      return
+      console.log("Payment attempt too soon, please wait");
+      alert("Please wait a moment before trying again");
+      return;
     }
 
     if (!recipient || !amount || !selectedToken) {
-      alert('Please fill in all fields')
-      return
+      alert("Please fill in all fields");
+      return;
     }
 
     if (!isReady) {
-      alert('Avail SDK not ready. Please connect your wallet.')
-      return
+      alert("Avail SDK not ready. Please connect your wallet.");
+      return;
     }
 
     // Record this payment attempt
-    lastPaymentAttemptRef.current = now
+    lastPaymentAttemptRef.current = now;
 
     try {
-      setPaymentInProgress(true)
-      setLoading(true)
-      
+      setPaymentInProgress(true);
+      setLoading(true);
+
       // LOCK the source chain ID BEFORE any SDK calls to prevent automatic switching
       let sourceChainId: number;
       if (window.ethereum) {
         try {
-          const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+          const chainIdHex = await window.ethereum.request({
+            method: "eth_chainId",
+          });
           sourceChainId = parseInt(chainIdHex, 16);
-          console.log('🔒 LOCKED source chain ID:', sourceChainId);
+          console.log("🔒 LOCKED source chain ID:", sourceChainId);
         } catch (e) {
-          console.error('Failed to get source chainId:', e);
-          throw new Error('Failed to detect current chain. Please try again.');
+          console.error("Failed to get source chainId:", e);
+          throw new Error("Failed to detect current chain. Please try again.");
         }
       } else {
         sourceChainId = actualChainId || 1;
-        console.log('🔒 Using fallback source chain ID:', sourceChainId);
+        console.log("🔒 Using fallback source chain ID:", sourceChainId);
       }
-      
+
       // Get target chain ID from selected chain
-      const targetChainId = networks.find(n => n.name === selectedChain)?.chainId || 1
-      
+      const targetChainId =
+        networks.find((n) => n.name === selectedChain)?.chainId || 1;
+
       // Create cross-chain intent with LOCKED source chain
       const intent = {
         chainFrom: sourceChainId, // Use locked source chain ID
@@ -409,165 +491,205 @@ export default function PaymentsPage() {
         token: selectedToken,
         amount: amount,
         walletAddress: address!,
-        recipientAddress: recipient
-      }
+        recipientAddress: recipient,
+      };
 
-      console.log('🚀 Executing payment with LOCKED intent:', intent)
-      console.log('📌 Source chain locked to:', sourceChainId);
-      console.log('🎯 Destination chain:', targetChainId);
-      
+      console.log("🚀 Executing payment with LOCKED intent:", intent);
+      console.log("📌 Source chain locked to:", sourceChainId);
+      console.log("🎯 Destination chain:", targetChainId);
+
       // Validate that we're doing a cross-chain transfer
       if (intent.chainFrom === intent.chainTo) {
-        throw new Error('Please select a different target chain for cross-chain transfer')
+        throw new Error(
+          "Please select a different target chain for cross-chain transfer"
+        );
       }
-      
+
       // Check wallet balance before attempting bridge
-      const currentBalance = directBalance ? directBalance.formatted : (balance?.value ? Number(balance.value) / 1e18 : 0)
-      const amountToSend = Number(amount)
-      
-      console.log('Balance check:', { 
+      const currentBalance = directBalance
+        ? directBalance.formatted
+        : balance?.value
+        ? Number(balance.value) / 1e18
+        : 0;
+      const amountToSend = Number(amount);
+
+      console.log("Balance check:", {
         wagmiBalance: balance?.value ? Number(balance.value) / 1e18 : 0,
         directBalance: directBalance?.formatted || 0,
-        currentBalance, 
-        amountToSend, 
-        hasEnough: currentBalance >= amountToSend 
-      })
-      
+        currentBalance,
+        amountToSend,
+        hasEnough: currentBalance >= amountToSend,
+      });
+
       if (currentBalance < amountToSend) {
-        throw new Error(`Insufficient balance. You have ${currentBalance.toFixed(6)} ETH but trying to send ${amountToSend} ETH`)
+        throw new Error(
+          `Insufficient balance. You have ${currentBalance.toFixed(
+            6
+          )} ETH but trying to send ${amountToSend} ETH`
+        );
       }
-      
+
       // Execute bridge operation
-      const result = await executeBridge(intent)
-      
-      console.log('Payment result:', result)
-      
+      const result = await executeBridge(intent);
+
+      console.log("Payment result:", result);
+
       // Handle successful transaction
-      console.log('✅ Payment completed successfully:', result)
-      
+      console.log("✅ Payment completed successfully:", result);
+
       // Clear form fields immediately
-      setRecipient("")
-      setAmount("")
-      
+      setRecipient("");
+      setAmount("");
+
       // Show success message based on what we received
-      if (result.transactionHash && result.transactionHash !== 'unknown') {
-        alert(`🎉 Payment Successful!\n\nTransaction Hash: ${result.transactionHash}\n\nThe transaction has been completed and funds have been transferred.`)
-      } else if (result.bridgeId && result.bridgeId !== 'unknown') {
-        alert(`🎉 Payment Submitted Successfully!\n\nBridge ID: ${result.bridgeId}\n\nThe transaction is being processed by the Avail network and will be completed shortly.`)
+      if (result.transactionHash && result.transactionHash !== "unknown") {
+        alert(
+          `🎉 Payment Successful!\n\nTransaction Hash: ${result.transactionHash}\n\nThe transaction has been completed and funds have been transferred.`
+        );
+      } else if (result.bridgeId && result.bridgeId !== "unknown") {
+        alert(
+          `🎉 Payment Submitted Successfully!\n\nBridge ID: ${result.bridgeId}\n\nThe transaction is being processed by the Avail network and will be completed shortly.`
+        );
       } else {
-        alert(`🎉 Payment Successful!\n\nThe transaction has been completed successfully.`)
+        alert(
+          `🎉 Payment Successful!\n\nThe transaction has been completed successfully.`
+        );
       }
-      
+
       // Refresh wallet data after a short delay
       setTimeout(() => {
-        window.location.reload()
-      }, 3000) // Give user time to read the success message
-      
+        window.location.reload();
+      }, 3000); // Give user time to read the success message
     } catch (error) {
-      console.error('Payment failed:', error)
-      
+      console.error("Payment failed:", error);
+
       // Handle specific error cases
       if (error instanceof Error) {
-        if (error.message.includes('Transaction was cancelled by user')) {
-          alert('Transaction was cancelled. No payment was made.')
-        } else if (error.message.includes('Another operation is already in progress')) {
-          alert('A payment is already being processed. Please wait for it to complete.')
-        } else if (error.message.includes('Avail SDK not initialized')) {
-          alert('Payment system not ready. Please refresh the page and try again.')
-        } else if (error.message.includes('User rejected') || error.message.includes('User denied')) {
-          alert('Transaction was cancelled by user. No payment was made.')
+        if (error.message.includes("Transaction was cancelled by user")) {
+          alert("Transaction was cancelled. No payment was made.");
+        } else if (
+          error.message.includes("Another operation is already in progress")
+        ) {
+          alert(
+            "A payment is already being processed. Please wait for it to complete."
+          );
+        } else if (error.message.includes("Avail SDK not initialized")) {
+          alert(
+            "Payment system not ready. Please refresh the page and try again."
+          );
+        } else if (
+          error.message.includes("User rejected") ||
+          error.message.includes("User denied")
+        ) {
+          alert("Transaction was cancelled by user. No payment was made.");
         } else {
-          alert(`❌ Payment Failed\n\nError: ${error.message}\n\nPlease try again or contact support if the issue persists.`)
+          alert(
+            `❌ Payment Failed\n\nError: ${error.message}\n\nPlease try again or contact support if the issue persists.`
+          );
         }
       } else {
-        alert(`❌ Payment Failed\n\nUnknown error occurred. Please try again.`)
+        alert(`❌ Payment Failed\n\nUnknown error occurred. Please try again.`);
       }
     } finally {
-      setLoading(false)
-      setPaymentInProgress(false)
+      setLoading(false);
+      setPaymentInProgress(false);
     }
-  }
+  };
 
   // Test cross-chain payment function
   const testCrossChainPayment = async () => {
     if (!address) {
-      alert('Please connect your wallet first')
-      return
+      alert("Please connect your wallet first");
+      return;
     }
 
     try {
-      setLoading(true)
-      
+      setLoading(true);
+
       // Test cross-chain bridge from current chain to Polygon
       const testIntent = {
         chainFrom: actualChainId || 1,
         chainTo: 137, // Polygon
-        token: 'USDC',
-        amount: '1',
+        token: "USDC",
+        amount: "1",
         walletAddress: address,
-        recipientAddress: address // Send to self for testing
-      }
+        recipientAddress: address, // Send to self for testing
+      };
 
-      console.log('Testing cross-chain payment:', testIntent)
-      
-      const result = await executeBridge(testIntent)
-      
-      console.log('Cross-chain test result:', result)
-      alert(`Cross-chain test successful! Bridge ID: ${result.bridgeId}`)
-      
+      console.log("Testing cross-chain payment:", testIntent);
+
+      const result = await executeBridge(testIntent);
+
+      console.log("Cross-chain test result:", result);
+      alert(`Cross-chain test successful! Bridge ID: ${result.bridgeId}`);
     } catch (error) {
-      console.error('Cross-chain test failed:', error)
-      alert(`Cross-chain test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error("Cross-chain test failed:", error);
+      alert(
+        `Cross-chain test failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Test SDK bridge call function
   const testSDKBridge = async () => {
     if (!address) {
-      alert('Please connect your wallet first')
-      return
+      alert("Please connect your wallet first");
+      return;
     }
-    
+
     try {
-      setLoading(true)
-      
+      setLoading(true);
+
       const testIntent = {
         chainFrom: actualChainId || 1,
         chainTo: 421614, // Arbitrum Sepolia
-        token: 'USDC',
-        amount: '0.001',
+        token: "USDC",
+        amount: "0.001",
         walletAddress: address,
-        recipientAddress: address
-      }
-      
-      console.log('🧪 Testing SDK bridge call with intent:', testIntent)
-      
-      const { testSDKBridgeCall } = await import('@/lib/avail')
-      const result = await testSDKBridgeCall(testIntent)
-      
-      console.log('🧪 SDK bridge test result:', result)
-      
+        recipientAddress: address,
+      };
+
+      console.log("🧪 Testing SDK bridge call with intent:", testIntent);
+
+      const { testSDKBridgeCall } = await import("@/lib/avail");
+      const result = await testSDKBridgeCall(testIntent);
+
+      console.log("🧪 SDK bridge test result:", result);
+
       if (result.success) {
-        alert(`SDK bridge test successful! Result: ${JSON.stringify(result.result, null, 2)}`)
+        alert(
+          `SDK bridge test successful! Result: ${JSON.stringify(
+            result.result,
+            null,
+            2
+          )}`
+        );
       } else {
-        alert(`SDK bridge test failed: ${result.error}`)
+        alert(`SDK bridge test failed: ${result.error}`);
       }
-      
     } catch (error) {
-      console.error('SDK bridge test failed:', error)
-      alert(`SDK bridge test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error("SDK bridge test failed:", error);
+      alert(
+        `SDK bridge test failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <MainLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Payments</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+            Payments
+          </h2>
           <p className="text-sm md:text-base text-gray-400">
             Send and receive crypto payments across multiple chains with ease.
           </p>
@@ -575,24 +697,24 @@ export default function PaymentsPage() {
             <div className="text-xs md:text-sm text-blue-400">
               🔗 Current Chain: {chainName} (ID: {actualChainId})
             </div>
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               onClick={() => {
-                console.log('🔄 Manual refresh triggered')
-                window.location.reload()
+                console.log("🔄 Manual refresh triggered");
+                window.location.reload();
               }}
               className="text-xs"
             >
               🔄 Refresh Chain
             </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               onClick={() => {
-                console.log('🔄 Resetting Avail SDK')
-                resetAvailSDK()
-                alert('Avail SDK reset. Please refresh the page.')
+                console.log("🔄 Resetting Avail SDK");
+                resetAvailSDK();
+                alert("Avail SDK reset. Please refresh the page.");
               }}
               className="text-xs"
             >
@@ -600,7 +722,8 @@ export default function PaymentsPage() {
             </Button>
           </div>
           <div className="mt-2 text-xs text-gray-500 hidden sm:block">
-            Debug: Wagmi={chainId} | Manual={manualChainId} | Chain={chainName} | Final={actualChainId}
+            Debug: Wagmi={chainId} | Manual={manualChainId} | Chain={chainName}{" "}
+            | Final={actualChainId}
           </div>
         </div>
 
@@ -618,9 +741,25 @@ export default function PaymentsPage() {
               {isConnected && (
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
                   <div className="text-sm text-blue-400 font-medium">
-                    💰 Current Balance: {directBalance ? directBalance.formatted.toFixed(6) : balance ? (Number(balance.value) / 1e18).toFixed(6) : '0.000000'} ETH
+                    💰 Current Balance:{" "}
+                    {directBalance
+                      ? directBalance.formatted.toFixed(6)
+                      : balance
+                      ? (Number(balance.value) / 1e18).toFixed(6)
+                      : "0.000000"}{" "}
+                    ETH
                     <span className="text-xs text-gray-400 ml-2">
-                      (Chain {actualChainId === 10 ? 'OP Mainnet' : actualChainId === 1 ? 'Ethereum' : actualChainId === 11155420 ? 'OP Sepolia' : actualChainId === 421614 ? 'Arbitrum Sepolia' : actualChainId})
+                      (Chain{" "}
+                      {actualChainId === 10
+                        ? "OP Mainnet"
+                        : actualChainId === 1
+                        ? "Ethereum"
+                        : actualChainId === 11155420
+                        ? "OP Sepolia"
+                        : actualChainId === 421614
+                        ? "Arbitrum Sepolia"
+                        : actualChainId}
+                      )
                     </span>
                   </div>
                   <div className="text-xs text-gray-400 mt-1">
@@ -628,20 +767,24 @@ export default function PaymentsPage() {
                   </div>
                   {actualChainId === 421614 && (
                     <div className="text-xs text-yellow-400 mt-1 flex items-center gap-2">
-                      ⚠️ You're on Arbitrum Sepolia. Switch to OP Sepolia to use your OP Sepolia balance.
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
+                      ⚠️ You're on Arbitrum Sepolia. Switch to OP Sepolia to use
+                      your OP Sepolia balance.
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={async () => {
                           try {
                             if (window.ethereum) {
                               await window.ethereum.request({
-                                method: 'wallet_switchEthereumChain',
-                                params: [{ chainId: '0xaa36a7' }], // OP Sepolia chain ID
-                              })
+                                method: "wallet_switchEthereumChain",
+                                params: [{ chainId: "0xaa36a7" }], // OP Sepolia chain ID
+                              });
                             }
                           } catch (error) {
-                            console.error('Failed to switch to OP Sepolia:', error)
+                            console.error(
+                              "Failed to switch to OP Sepolia:",
+                              error
+                            );
                           }
                         }}
                         className="text-xs h-6 px-2"
@@ -650,14 +793,16 @@ export default function PaymentsPage() {
                       </Button>
                     </div>
                   )}
-                  {actualChainId === 11155420 && selectedChain === 'Arbitrum Sepolia' && (
-                    <div className="text-xs text-green-400 mt-1">
-                      ✅ Perfect! You're on OP Sepolia and sending to Arbitrum Sepolia. This should work.
-                    </div>
-                  )}
+                  {actualChainId === 11155420 &&
+                    selectedChain === "Arbitrum Sepolia" && (
+                      <div className="text-xs text-green-400 mt-1">
+                        ✅ Perfect! You're on OP Sepolia and sending to Arbitrum
+                        Sepolia. This should work.
+                      </div>
+                    )}
                 </div>
               )}
-              
+
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-2 block">
                   Recipient Address
@@ -669,7 +814,7 @@ export default function PaymentsPage() {
                   className="bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                 />
               </div>
-              
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-300 mb-2 block">
@@ -686,7 +831,7 @@ export default function PaymentsPage() {
                   <label className="text-sm font-medium text-gray-300 mb-2 block">
                     Token
                   </label>
-                  <TokenDropdown 
+                  <TokenDropdown
                     selectedToken={selectedToken}
                     setSelectedToken={setSelectedToken}
                     isOpen={isTokenDropdownOpen}
@@ -697,7 +842,7 @@ export default function PaymentsPage() {
                   <label className="text-sm font-medium text-gray-300 mb-2 block">
                     Chain
                   </label>
-                  <ChainDropdown 
+                  <ChainDropdown
                     selectedChain={selectedChain}
                     setSelectedChain={setSelectedChain}
                     isOpen={isChainDropdownOpen}
@@ -706,8 +851,8 @@ export default function PaymentsPage() {
                 </div>
               </div>
 
-              <Button 
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border-0" 
+              <Button
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 border-0"
                 onClick={handleSendPayment}
                 disabled={!isReady || loading || paymentInProgress}
               >
@@ -716,7 +861,9 @@ export default function PaymentsPage() {
                 ) : (
                   <Send className="h-4 w-4 mr-2" />
                 )}
-                {loading || paymentInProgress ? 'Processing...' : 'Send Payment'}
+                {loading || paymentInProgress
+                  ? "Processing..."
+                  : "Send Payment"}
               </Button>
             </CardContent>
           </Card>
@@ -748,16 +895,25 @@ export default function PaymentsPage() {
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
-                <span className="ml-2 text-gray-400">Loading transactions...</span>
+                <span className="ml-2 text-gray-400">
+                  Loading transactions...
+                </span>
               </div>
             ) : recentTransactions.length > 0 ? (
               <div className="space-y-3 md:space-y-4">
                 {recentTransactions.map((tx, index) => (
-                  <div key={tx.hash || index} className="transaction-card flex items-start justify-between p-3 md:p-4 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                  <div
+                    key={tx.hash || index}
+                    className="transaction-card flex items-start justify-between p-3 md:p-4 rounded-lg bg-white/5 border border-white/10 overflow-hidden"
+                  >
                     <div className="flex items-start gap-3 min-w-0 flex-1 max-w-[calc(100%-120px)]">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        tx.from?.toLowerCase() === address?.toLowerCase() ? 'bg-red-500/20' : 'bg-green-500/20'
-                      }`}>
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          tx.from?.toLowerCase() === address?.toLowerCase()
+                            ? "bg-red-500/20"
+                            : "bg-green-500/20"
+                        }`}
+                      >
                         {tx.from?.toLowerCase() === address?.toLowerCase() ? (
                           <ArrowUpRight className="w-4 h-4 text-red-400" />
                         ) : (
@@ -766,18 +922,30 @@ export default function PaymentsPage() {
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <div className="text-white font-medium text-sm md:text-base truncate">
-                          {tx.from?.toLowerCase() === address?.toLowerCase() ? 'Sent' : 'Received'} {tx.value} ETH
+                          {tx.from?.toLowerCase() === address?.toLowerCase()
+                            ? "Sent"
+                            : "Received"}{" "}
+                          {tx.value} ETH
                         </div>
                         <div className="text-gray-400 text-xs md:text-sm mt-1 overflow-hidden">
                           <div className="flex items-center gap-1 min-w-0">
                             <span className="flex-shrink-0">
-                              {tx.from?.toLowerCase() === address?.toLowerCase() ? 'To' : 'From'}
+                              {tx.from?.toLowerCase() === address?.toLowerCase()
+                                ? "To"
+                                : "From"}
                             </span>
                             <span className="font-mono text-xs bg-white/5 px-1 py-1 rounded border border-white/10 truncate min-w-0 max-w-[140px] sm:max-w-[180px]">
                               {(() => {
-                                const addressToShow = tx.from?.toLowerCase() === address?.toLowerCase() ? tx.to : tx.from;
-                                if (!addressToShow) return 'N/A';
-                                return `${addressToShow.slice(0, 6)}...${addressToShow.slice(-4)}`;
+                                const addressToShow =
+                                  tx.from?.toLowerCase() ===
+                                  address?.toLowerCase()
+                                    ? tx.to
+                                    : tx.from;
+                                if (!addressToShow) return "N/A";
+                                return `${addressToShow.slice(
+                                  0,
+                                  6
+                                )}...${addressToShow.slice(-4)}`;
                               })()}
                             </span>
                           </div>
@@ -793,8 +961,14 @@ export default function PaymentsPage() {
                       <div className="text-gray-400 text-xs md:text-sm">
                         {new Date(tx.timestamp).toLocaleDateString()}
                       </div>
-                      <div className={`text-xs ${tx.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                        {tx.status === 'success' ? '✓ completed' : '✗ failed'}
+                      <div
+                        className={`text-xs ${
+                          tx.status === "success"
+                            ? "text-green-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {tx.status === "success" ? "✓ completed" : "✗ failed"}
                       </div>
                     </div>
                   </div>
@@ -802,7 +976,9 @@ export default function PaymentsPage() {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-400">
-                {isConnected ? 'No transactions found' : 'Connect your wallet to view transactions'}
+                {isConnected
+                  ? "No transactions found"
+                  : "Connect your wallet to view transactions"}
               </div>
             )}
           </CardContent>
@@ -817,20 +993,33 @@ export default function PaymentsPage() {
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
-                <span className="ml-2 text-gray-400">Loading token balances...</span>
+                <span className="ml-2 text-gray-400">
+                  Loading token balances...
+                </span>
               </div>
             ) : tokens.length > 0 ? (
               <ResponsiveGrid cols={{ default: 1, sm: 2, lg: 3 }}>
                 {tokens.map((token, index) => (
-                  <Card key={token.symbol || index} variant="glass" hover className="p-4">
+                  <Card
+                    key={token.symbol || index}
+                    variant="glass"
+                    hover
+                    className="p-4"
+                  >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
-                          <span className="text-blue-400 text-lg font-bold">{token.symbol?.[0] || 'T'}</span>
+                          <span className="text-blue-400 text-lg font-bold">
+                            {token.symbol?.[0] || "T"}
+                          </span>
                         </div>
                         <div>
-                          <div className="text-white font-medium">{token.token || token.symbol}</div>
-                          <div className="text-gray-400 text-sm">{token.symbol}</div>
+                          <div className="text-white font-medium">
+                            {token.token || token.symbol}
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            {token.symbol}
+                          </div>
                           {token.chain && (
                             <div className="text-xs text-blue-400">
                               {token.chain}
@@ -840,7 +1029,9 @@ export default function PaymentsPage() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-white text-lg font-semibold">{token.balance} {token.symbol}</div>
+                      <div className="text-white text-lg font-semibold">
+                        {token.balance} {token.symbol}
+                      </div>
                       <div className="text-gray-400 text-sm">{token.value}</div>
                     </div>
                   </Card>
@@ -848,12 +1039,14 @@ export default function PaymentsPage() {
               </ResponsiveGrid>
             ) : (
               <div className="text-center py-8 text-gray-400">
-                {isConnected ? 'No token balances found' : 'Connect your wallet to view token balances'}
+                {isConnected
+                  ? "No token balances found"
+                  : "Connect your wallet to view token balances"}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
     </MainLayout>
-  )
+  );
 }
